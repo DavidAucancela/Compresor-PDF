@@ -152,8 +152,10 @@ Todo vive en `build/` y se ejecuta con un comando.
 Desde una máquina Windows con PowerShell:
 
 ```powershell
-# Una sola vez: instalar WiX (herramienta para crear el MSI)
-dotnet tool install --global wix
+# Una sola vez: instalar WiX 7 y sus dependencias
+dotnet tool install -g wix
+wix eula accept wix7
+wix extension add WixToolset.UI.wixext
 
 # Generar el instalador
 .\build\publicar-windows.ps1             # x64 (por defecto)
@@ -169,8 +171,7 @@ $env:HUELLA_CERTIFICADO = "<huella SHA1 del certificado>"
 .\build\publicar-windows.ps1
 ```
 
-> El `.exe` compila correctamente desde macOS, pero **el MSI nunca se ha construido en una
-> máquina Windows real**. Espera tener que ajustar algo la primera vez.
+> Verificado en Windows 11 con WiX 7.0.0 y .NET 10.0.400.
 
 ### macOS — `.app` + `.dmg`
 

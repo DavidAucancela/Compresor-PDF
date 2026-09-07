@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Instalador MSI para Windows (RNF-04). Se construye con WiX v5:
-      dotnet tool install --global wix
+  Instalador MSI para Windows (RNF-04). Se construye con WiX v7:
+      dotnet tool install -g wix
       wix build instalador.wxs -d PublishDir=... -o CompresorPdf.msi
 
   NOTA LEGAL: este paquete no incluye Ghostscript y no debe incluirlo (ADR-003, AGPL).
@@ -44,7 +44,7 @@
       </Component>
     </StandardDirectory>
 
-    <Icon Id="IconoApp" SourceFile="CompresorPdf.ico" />
+    <Icon Id="IconoApp" SourceFile="build/CompresorPdf.ico" />
     <Property Id="ARPPRODUCTICON" Value="IconoApp" />
     <Property Id="ARPHELPLINK" Value="https://github.com/DavidAucancela" />
 
@@ -54,7 +54,7 @@
     </Feature>
 
     <ui:WixUI xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
-    <WixVariable Id="WixUILicenseRtf" Value="licencia.rtf" />
+    <WixVariable Id="WixUILicenseRtf" Value="build/licencia.rtf" />
 
   </Package>
 </Wix>

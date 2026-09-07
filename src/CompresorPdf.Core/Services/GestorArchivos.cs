@@ -59,6 +59,12 @@ public sealed class GestorArchivos : IGestorArchivos
         return resultado;
     }
 
+    public bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos) =>
+        archivos
+            .Select(a => Path.GetDirectoryName(a.RutaCompleta))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count() > 1;
+
     /// <summary>Soltar una carpeta en la ventana equivale a soltar los PDFs que contiene.</summary>
     private static IEnumerable<string> ExpandirCarpetas(string ruta)
     {

@@ -106,4 +106,32 @@ public class GestorArchivosTests
 
         Assert.Equal(2, filtrados.Count);
     }
+
+    // RF-24b: cuando los PDFs vienen de carpetas distintas, el lote se redirige a una
+    // carpeta consolidada para que los comprimidos no queden desperdigados.
+
+    [Fact]
+    public void TieneOrigenesMixtos_devuelve_true_cuando_hay_mas_de_una_carpeta_origen()
+    {
+        var archivos = new List<ArchivoPdf>
+        {
+            new() { RutaCompleta = Path.Combine("carpeta1", "a.pdf"), TamanoBytes = 0 },
+            new() { RutaCompleta = Path.Combine("carpeta2", "b.pdf"), TamanoBytes = 0 },
+        };
+
+        Assert.True(_gestor.TieneOrigenesMixtos(archivos));
+    }
+
+    [Fact]
+    public void TieneOrigenesMixtos_devuelve_false_cuando_todos_vienen_del_mismo_directorio()
+    {
+        var archivos = new List<ArchivoPdf>
+        {
+            new() { RutaCompleta = Path.Combine("misma", "a.pdf"), TamanoBytes = 0 },
+            new() { RutaCompleta = Path.Combine("misma", "b.pdf"), TamanoBytes = 0 },
+            new() { RutaCompleta = Path.Combine("misma", "c.pdf"), TamanoBytes = 0 },
+        };
+
+        Assert.False(_gestor.TieneOrigenesMixtos(archivos));
+    }
 }

@@ -134,7 +134,7 @@
     </Border>
 
     <!-- ══ Contenido ══ -->
-    <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto,Auto" Margin="20,16,20,20">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="20,16,20,20">
 
       <!-- Aviso del motor: sólo estorba si de verdad falta algo que hacer. -->
       <Border Grid.Row="0" IsVisible="{Binding !GhostscriptDisponible}"
@@ -144,9 +144,31 @@
                    Foreground="{DynamicResource SemiColorWarning}" />
       </Border>
 
+      <!-- Cabecera de la lista (RF-22/23): visible sólo cuando hay archivos y no se está
+           procesando — HayArchivos ya implica ambas condiciones. -->
+      <Grid Grid.Row="1" ColumnDefinitions="42,*,Auto"
+            IsVisible="{Binding HayArchivos}"
+            Margin="14,0,14,4">
+        <CheckBox Grid.Column="0" IsChecked="{Binding TodosSeleccionados}"
+                  VerticalAlignment="Center" ToolTip.Tip="Seleccionar / deseleccionar todo" />
+        <TextBlock Grid.Column="1" Text="Archivo" FontSize="11.5" Opacity="0.45"
+                   VerticalAlignment="Center" />
+        <!-- RF-23: quitar sólo los seleccionados sin limpiar el lote completo -->
+        <Button Grid.Column="2" Command="{Binding QuitarSeleccionadosCommand}"
+                IsVisible="{Binding HaySeleccionados}"
+                Padding="8,4" FontSize="12">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource IconoPapelera}" Width="11" Height="11" Stretch="Uniform"
+                  Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.5"
+                  StrokeLineCap="Round" StrokeJoin="Round" />
+            <TextBlock Text="Quitar seleccionados" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+
       <!-- Zona de carga / lista de archivos: un único contenedor con feedback de
            arrastre (sección 5.2 y 5.3). -->
-      <Border Grid.Row="1" x:Name="ZonaPrincipal" Classes="zona-carga">
+      <Border Grid.Row="2" x:Name="ZonaPrincipal" Classes="zona-carga">
         <Panel>
 
           <Button Classes="zona-carga-boton" IsVisible="{Binding !Filas.Count}"
@@ -181,6 +203,8 @@
             </Panel>
           </Button>
 
+          <!-- RF-22: columna 0 (28 px) = checkbox de selección; columna 1 = ícono de estado;
+               columnas 2-4 = datos del archivo. -->
           <ItemsControl ItemsSource="{Binding Filas}" IsVisible="{Binding Filas.Count}" Padding="6">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -189,10 +213,13 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:FilaResultadoViewModel">
-                <Border Classes="fila-archivo" Padding="12,10" CornerRadius="8">
-                  <Grid ColumnDefinitions="22,*,Auto,Auto" ColumnSpacing="12">
+                <Border Classes="fila-archivo" Padding="10,10" CornerRadius="8">
+                  <Grid ColumnDefinitions="28,22,*,Auto,Auto" ColumnSpacing="10">
 
-                    <Path Grid.Column="0" Width="16" Height="16" Stretch="Uniform"
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Seleccionada}"
+                              VerticalAlignment="Center" />
+
+                    <Path Grid.Column="1" Width="16" Height="16" Stretch="Uniform"
                           VerticalAlignment="Center" IsVisible="{Binding TieneIcono}"
                           Data="{Binding IconoClave, Converter={x:Static conv:ConvertidorClaveAIcono.Instancia}}"
                           StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round"
@@ -201,7 +228,7 @@
                           Classes.aviso="{Binding EsAviso}" Classes.peligro="{Binding EsPeligro}"
                           Classes.acento="{Binding EsAcento}" />
 
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                       <TextBlock Text="{Binding Nombre}" FontSize="13" FontWeight="Medium"
                                  TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding Mensaje}" FontSize="11" Opacity="0.55"
@@ -209,12 +236,12 @@
                                  IsVisible="{Binding Mensaje, Converter={x:Static sc:StringConverters.IsNotNullOrEmpty}}" />
                     </StackPanel>
 
-                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12.5"
+                    <TextBlock Grid.Column="3" VerticalAlignment="Center" FontSize="12.5"
                                FontFamily="Consolas,Menlo,monospace" Opacity="0.7">
                       <Run Text="{Binding TamanoOriginal}" /><Run Text=" → " /><Run Text="{Binding TamanoFinal}" />
                     </TextBlock>
 
-                    <Border Grid.Column="3" Classes="chip exito" VerticalAlignment="Center"
+                    <Border Grid.Column="4" Classes="chip exito" VerticalAlignment="Center"
                             IsVisible="{Binding Reduccion, Converter={x:Static sc:StringConverters.IsNotNullOrEmpty}}">
                       <TextBlock Text="{Binding Reduccion}" />
                     </Border>
@@ -229,13 +256,32 @@
       </Border>
 
       <!-- Progreso: comprimiendo o analizando (RF-19) comparten la misma barra. -->
-      <StackPanel Grid.Row="2" Spacing="6" Margin="0,14,0,0" IsVisible="{Binding EstaOcupado}">
+      <StackPanel Grid.Row="3" Spacing="6" Margin="0,14,0,0" IsVisible="{Binding EstaOcupado}">
         <ProgressBar Value="{Binding Progreso}" Maximum="100" Height="6" CornerRadius="3" />
+        <!-- RF-21: totales acumulados en vivo — aparecen en cuanto hay al menos un
+             archivo comprimido, así el usuario ve el ahorro crecer fila a fila. -->
+        <Border IsVisible="{Binding HayTotalesEnVivo}"
+                Background="{DynamicResource SemiColorFill0}"
+                CornerRadius="6" Padding="12,7">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" FontSize="12" FontFamily="Consolas,Menlo,monospace">
+              <Run Text="{Binding TotalOriginalEnVivo}" />
+              <Run Text=" → " />
+              <Run Text="{Binding TotalFinalEnVivo}" />
+              <Run Text=" · " />
+              <Run Text="{Binding TotalAhorroEnVivo}" Foreground="{DynamicResource SemiColorSuccess}" />
+              <Run Text=" ahorrados" />
+            </TextBlock>
+            <Border Grid.Column="1" Classes="chip exito" VerticalAlignment="Center">
+              <TextBlock Text="{Binding TotalAhorroPorcentajeEnVivo}" />
+            </Border>
+          </Grid>
+        </Border>
         <TextBlock Text="{Binding MensajeEstado}" FontSize="12" Opacity="0.6" />
       </StackPanel>
 
       <!-- Resumen destacado (sección 5.6): el ahorro total es el dato que importa. -->
-      <Border Grid.Row="2" Margin="0,14,0,0" Padding="18,15" CornerRadius="10"
+      <Border Grid.Row="3" Margin="0,14,0,0" Padding="18,15" CornerRadius="10"
               Background="{DynamicResource SemiColorFill0}"
               IsVisible="{Binding HayResumen}">
         <StackPanel Orientation="Horizontal" Spacing="18">
@@ -255,8 +301,17 @@
       </Border>
 
       <!-- Acciones -->
-      <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"
+      <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"
                   Margin="0,16,0,0">
+        <!-- RF-24: abrir en el explorador del SO la carpeta con los comprimidos. -->
+        <Button Command="{Binding AbrirCarpetaResultadosCommand}" IsVisible="{Binding HayResumen}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconoCarpeta}" Width="13" Height="13" Stretch="Uniform"
+                  Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                  StrokeLineCap="Round" StrokeJoin="Round" />
+            <TextBlock Text="Abrir carpeta" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
         <Button Click="AlAnadirArchivos" IsEnabled="{Binding PuedeAnadirArchivos}">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <Path Data="{StaticResource IconoMas}" Width="13" Height="13" Stretch="Uniform"

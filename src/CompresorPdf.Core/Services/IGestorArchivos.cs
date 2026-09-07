@@ -13,4 +13,7 @@ public interface IGestorArchivos
 
     /// <summary>Filtra una lista de rutas dejando sólo PDFs existentes, sin duplicados.</summary>
     IReadOnlyList<string> FiltrarPdfs(IEnumerable<string> rutas);
+
+    /// <summary>True si los archivos provienen de más de una carpeta padre distinta (RF-24b).</summary>
+    bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos);
 }

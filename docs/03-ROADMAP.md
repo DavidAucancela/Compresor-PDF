@@ -22,7 +22,7 @@ Leyenda: ✅ hecho y probado · 🟡 parcial · ⬜ pendiente
 | ✅ | RNF-05 Funcionamiento offline | Sin una sola llamada de red |
 | ✅ | RNF-07 Preferencias persistentes | JSON, tolerante a corrupción |
 | ✅ | RNF-08 Logs | `compresor.log` en la carpeta de datos del usuario |
-| ✅ | RNF-04 Instalable | `.app` + `.dmg` verificados en este Mac; `.exe` de Windows compilado, MSI definido |
+| ✅ | RNF-04 Instalable | `.app` + `.dmg` verificados en Mac; `.exe` + `.msi` verificados en Windows real |
 
 **Verificado de extremo a extremo:** PDF real de 2.23 MB → 246 KB (−89.2 %), con el pequeño
 omitido y el corrupto reportado sin frenar el lote. La app empaquetada arranca desde Finder
@@ -41,11 +41,8 @@ pwsh build/publicar-windows.ps1        # desde Windows
 
 **Qué está verificado:** el `.app` de macOS se monta, arranca desde Finder y encuentra
 Ghostscript incluso con el `PATH` mínimo de launchd; el `.dmg` se genera (46 MB). El
-`.exe` de Windows compila desde el Mac (PE32+ GUI x64, con el icono embebido).
-
-**Qué NO está verificado:** la construcción del MSI y la instalación en Windows. El
-`.wxs` está escrito para WiX v5 pero no se ha podido ejecutar — hace falta una máquina
-Windows. Trátalo como pendiente de una primera pasada real.
+`.exe` de Windows compila y arranca en máquina real; el `.msi` generado con WiX 7 se
+instala correctamente en Windows 11.
 
 **Lo que falta y depende de ti (no de código):**
 
@@ -78,7 +75,6 @@ Lo que queda de Fase 2 es sólo la vista previa. Requiere revisar el ADR-005.
 **Además, pendiente en esta fase:**
 - ⬜ Progreso *por archivo*, no sólo global. Ghostscript no reporta avance; habría que
   estimarlo por páginas procesadas leyendo su salida.
-- ⬜ Botón "abrir carpeta de resultados" al terminar.
 - ⬜ Acción para reintentar sólo los archivos fallidos.
 
 ---
@@ -128,37 +124,40 @@ macOS), no por un problema conocido de la app.
 
 ## Fase 5 — Lotes grandes (selección, totales y exportación)
 
-**Estado: RF-19 y RF-25 hechos; el resto planificado con decisiones cerradas.** Plan completo
-en [08-PLAN-LOTES-GRANDES.md](08-PLAN-LOTES-GRANDES.md). Nace de un caso de uso real: cargar
-una carpeta con ~200 PDFs y poder gestionarlos (seleccionar, quitar, ver el total agregado,
-obtener los resultados) sin que la interfaz se congele.
+**Estado: completa ✅** Plan completo en [08-PLAN-LOTES-GRANDES.md](08-PLAN-LOTES-GRANDES.md).
+Nace de un caso de uso real: cargar una carpeta con ~200 PDFs y poder gestionarlos (seleccionar,
+quitar, ver el total agregado, obtener los resultados) sin que la interfaz se congele.
 
 | RF | Descripción | Estado |
 |---|---|---|
 | RF-19 | Carga de ~200 PDFs sin bloquear la UI durante el análisis | ✅ verificado con 205 PDFs y un lote de 323 MB |
 | RF-20 | Información por archivo a esta escala (ya cubierto por la Fase 4) | ✅ |
-| RF-21 | Totales agregados en vivo (antes/después de todo el lote) | ⬜ |
-| RF-22 | Selección de archivos (individual y en bloque) | ⬜ |
-| RF-23 | Quitar archivos sin vaciar todo el lote | ⬜ |
-| RF-24 | Botón "Abrir carpeta de resultados" | ⬜ |
-| RF-24b | Carpeta de salida consolidada cuando el lote mezcla orígenes distintos | ⬜ |
+| RF-21 | Totales agregados en vivo (antes/después de todo el lote) | ✅ |
+| RF-22 | Selección de archivos (individual y en bloque) | ✅ |
+| RF-23 | Quitar archivos sin vaciar todo el lote | ✅ |
+| RF-24 | Botón "Abrir carpeta de resultados" | ✅ |
+| RF-24b | Carpeta de salida consolidada cuando el lote mezcla orígenes distintos | ✅ |
 | RF-25 | Unidad del umbral configurable (KB/MB) | ✅ |
 
-**RF-19 y RF-25 ya están hechos.** El hallazgo de arquitectura real —
-`MainWindowViewModel.AgregarRutas` y `ServicioCompresionLote.Preparar` eran **síncronos** y
-bloqueaban la ventana con lotes grandes— se resolvió con `PrepararAsync` (corre en
-`Task.Run`, reporta progreso, respeta cancelación). Verificado con 205 PDFs reales y con un
-lote de 150 archivos de ~2.2 MB (323 MB) sin ningún bloqueo. De paso se añadió RF-25: el
-umbral ahora se puede editar en KB o en MB (selector segmentado en Ajustes), sin cambiar el
-valor efectivo, sólo cómo se muestra.
+**RF-19:** `PrepararAsync` (corre en `Task.Run`, reporta progreso, respeta cancelación).
+Verificado con 205 PDFs / 323 MB sin ningún bloqueo.
 
-**Las tres decisiones de producto para el resto de la fase ya están cerradas:** "obtener
-resultados" es abrir la carpeta en el explorador del SO (no `.zip`); los lotes con orígenes
-mixtos usan una carpeta de salida consolidada en vez de una `comprimidos/` por carpeta; y
-"Comprimir" siempre procesa la lista completa — la selección sólo sirve para quitar
-archivos, no para acotar la compresión. Diseño técnico resultante en la sección 5 del plan.
-Falta por construir: selección (RF-22), quitar archivos (RF-23), totales en vivo (RF-21),
-salida consolidada (RF-24b) y el botón de abrir carpeta (RF-24).
+**RF-21:** totales acumulados en vivo durante la compresión (original → final + % de ahorro)
+que crecen fila a fila en el panel de progreso, usando un acumulador `resultadosParciales`
+dentro del callback de `Progress<ProgresoLote>`.
+
+**RF-22 + RF-23:** checkbox por fila y checkbox de cabecera ("seleccionar todo"). Los cambios
+en `FilaResultadoViewModel.Seleccionada` se propagan al ViewModel padre mediante suscripción
+a `PropertyChanged`. "Quitar seleccionados" sólo borra las filas marcadas, sin limpiar el
+lote completo.
+
+**RF-24:** `AbrirCarpetaResultadosCommand` llama a `Process.Start(UseShellExecute=true)`
+con la carpeta del primer archivo comprimido — abre Explorador en Windows y Finder en macOS.
+
+**RF-24b:** `GestorArchivos.TieneOrigenesMixtos` detecta lotes con archivos de más de una
+carpeta padre; en ese caso `ComprimirAsync` clona las preferencias y fuerza
+`SalidaJuntoAlOriginal=false` con la carpeta de salida configurada (o la por defecto), para
+que todos los comprimidos queden en un mismo sitio en vez de desperdigados.
 
 ---
 

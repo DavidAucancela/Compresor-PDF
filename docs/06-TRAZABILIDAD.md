@@ -26,11 +26,11 @@ Cada requisito del plan original, dónde está implementado y qué prueba lo fij
 | RF-18 | Renombrado con patrón | 🟡 | `SufijoSalida`; falta patrón con variables | — |
 | RF-19 | Cargar ~200 PDFs sin bloquear la UI durante el análisis | ✅ | `ServicioCompresionLote.PrepararAsync`, `MainWindowViewModel.AgregarRutasAsync` | `PrepararAsync_analiza_lo_mismo_que_Preparar`, `PrepararAsync_reporta_progreso_una_vez_por_archivo`, `PrepararAsync_respeta_la_cancelacion` |
 | RF-20 | Información por archivo a esta escala | ✅ | Igual que RF-07/Fase 4, ya soportaba el volumen | — |
-| RF-21 | Totales agregados en vivo | ⬜ | — | — |
-| RF-22 | Selección de archivos | ⬜ | — | — |
-| RF-23 | Quitar archivos sin vaciar el lote | ⬜ | — | — |
-| RF-24 | Botón "Abrir carpeta de resultados" | ⬜ | — | — |
-| RF-24b | Carpeta de salida consolidada (orígenes mixtos) | ⬜ | — | — |
+| RF-21 | Totales agregados en vivo | ✅ | `MainWindowViewModel`: acumulador `resultadosParciales` + `HayTotalesEnVivo`, panel en `MainWindow.axaml` | — |
+| RF-22 | Selección de archivos | ✅ | `FilaResultadoViewModel.Seleccionada`, `MainWindowViewModel.HaySeleccionados`/`TodosSeleccionados`, checkbox en cabecera e ítems del `ItemsControl` | — |
+| RF-23 | Quitar archivos sin vaciar el lote | ✅ | `MainWindowViewModel.QuitarSeleccionadosCommand`, botón en cabecera de lista | — |
+| RF-24 | Botón "Abrir carpeta de resultados" | ✅ | `MainWindowViewModel.AbrirCarpetaResultadosCommand` (`Process.Start(UseShellExecute=true)`), botón en footer | — |
+| RF-24b | Carpeta de salida consolidada (orígenes mixtos) | ✅ | `GestorArchivos.TieneOrigenesMixtos`, `ServicioCompresionLote` passthrough, lógica de clone en `ComprimirAsync` | `TieneOrigenesMixtos_devuelve_true_cuando_hay_mas_de_una_carpeta_origen`, `TieneOrigenesMixtos_devuelve_false_cuando_todos_vienen_del_mismo_directorio` |
 | RF-25 | Unidad del umbral configurable (KB/MB) | ✅ | `MainWindowViewModel.UmbralValor`/`UnidadUmbral`, `PreferenciasUsuario.UnidadUmbral` | `La_unidad_del_umbral_es_MB_por_defecto`, `Las_preferencias_sobreviven_a_un_ciclo_guardar_cargar` |
 
 ## Requisitos no funcionales
@@ -40,7 +40,7 @@ Cada requisito del plan original, dónde está implementado y qué prueba lo fij
 | RNF-01 | No bloquear la UI | ✅ | Todo el lote es `async` sobre `Parallel.ForAsync` | Implícito en las pruebas async |
 | RNF-02 | Un error no detiene el lote | ✅ | Excepciones convertidas en `ResultadoCompresion` | `Un_archivo_corrupto_no_detiene_al_resto_del_lote`, `Un_fallo_del_motor_se_reporta_como_Error_y_el_lote_continua` |
 | RNF-03 | Nunca modificar el original | ✅ | ADR-004, reforzado en varios puntos | `El_archivo_original_nunca_se_modifica`, `El_motor_real_produce_un_pdf_valido_y_no_toca_el_original` |
-| RNF-04 | Instalable | ✅ | `build/publicar-macos.sh`, `build/publicar-windows.ps1`, `build/instalador.wxs` | Verificado a mano: el `.app` arranca desde Finder con `PATH` mínimo |
+| RNF-04 | Instalable | ✅ | `build/publicar-macos.sh`, `build/publicar-windows.ps1`, `build/instalador.wxs` | Verificado a mano: `.app` arranca en Mac, `.msi` instala en Windows 11 |
 | RNF-05 | 100 % offline | ✅ | Sin dependencias de red en ningún proyecto | Auditable por inspección |
 | RNF-06 | Licencia del motor | ✅ | ADR-003: Ghostscript no se distribuye | Decisión documentada |
 | RNF-07 | Preferencias persistentes | ✅ | `RepositorioPreferenciasJson` | `Las_preferencias_sobreviven_a_un_ciclo_guardar_cargar`, `Un_json_corrupto_no_rompe_el_arranque` |
@@ -48,15 +48,11 @@ Cada requisito del plan original, dónde está implementado y qué prueba lo fij
 
 ## Resumen
 
-**43 pruebas, todas en verde** (40 unitarias + 3 de integración contra Ghostscript real).
+**45 pruebas, todas en verde** (42 unitarias + 3 de integración contra Ghostscript real).
 
 - **Fase 1 (MVP): completa.** 15 de 15.
 - Fase 2: completa salvo RF-11 (vista previa). 4 de 5.
 - Fase 3: dos requisitos con base parcial, el resto sin empezar.
-- Fase 5 (lotes grandes): RF-19 y RF-25 hechos; RF-20 heredado de fases anteriores; RF-21 a
-  RF-24b pendientes de construir.
-- **Total: 22 de 33 requisitos cerrados**, 2 parciales (RF-14, RF-18), 9 pendientes
-  (RF-11, RF-15, RF-16, RF-17, RF-21, RF-22, RF-23, RF-24, RF-24b).
-
-Salvedad sobre RNF-04: el MSI de Windows está definido pero nunca se ha construido ni
-instalado en una máquina Windows real.
+- **Fase 5 (lotes grandes): completa.** RF-19 a RF-25 implementados (RF-20 heredado de fases anteriores).
+- **Total: 27 de 33 requisitos cerrados**, 2 parciales (RF-14, RF-18), 4 pendientes
+  (RF-11, RF-15, RF-16, RF-17).

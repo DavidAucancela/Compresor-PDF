@@ -19,6 +19,7 @@ public sealed partial class FilaResultadoViewModel : ObservableObject
     public string Carpeta => Path.GetDirectoryName(Archivo.RutaCompleta) ?? "";
     public string TamanoOriginal => ArchivoPdf.FormatearTamano(Archivo.TamanoBytes);
 
+    [ObservableProperty] private bool _seleccionada;       // RF-22
     [ObservableProperty] private EstadoCompresion _estado;
     [ObservableProperty] private string _tamanoFinal = "—";
     [ObservableProperty] private string _reduccion = "";

@@ -29,4 +29,5 @@ se conserva sin cambios como referencia histórica del alcance.
 - **Regla inviolable:** el archivo original nunca se modifica.
 - **Estado:** Fase 1 y Fase 2 (salvo RF-11 vista previa) completas. Fase 4 (rediseño visual):
   sub-fases 4.0–4.5 implementadas y verificadas con datos reales; 4.6–4.7 parciales. Fase 5
-  (lotes grandes): RF-19 y RF-25 hechos; RF-21 a RF-24b pendientes.
+  (lotes grandes): completa — RF-19, RF-21, RF-22, RF-23, RF-24, RF-24b y RF-25 implementados.
+  MSI de Windows verificado en máquina real.

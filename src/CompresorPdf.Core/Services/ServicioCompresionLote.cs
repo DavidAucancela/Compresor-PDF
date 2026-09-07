@@ -34,6 +34,10 @@ public sealed class ServicioCompresionLote
         _registro = registro ?? RegistroNulo.Instancia;
     }
 
+    /// <summary>True si los archivos proceden de más de una carpeta padre (RF-24b).</summary>
+    public bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos) =>
+        _gestor.TieneOrigenesMixtos(archivos);
+
     /// <summary>Analiza rutas de entrada y devuelve los archivos listos para encolar.</summary>
     public IReadOnlyList<ArchivoPdf> Preparar(IEnumerable<string> rutas) =>
         [.. _gestor.FiltrarPdfs(rutas).Select(_analizador.Analizar)];

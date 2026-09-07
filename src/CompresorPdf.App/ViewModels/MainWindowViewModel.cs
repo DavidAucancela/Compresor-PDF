@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,6 +23,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IRegistro _registro;
 
     private CancellationTokenSource? _cancelacion;
+    private string? _carpetaResultados;   // RF-24: carpeta de salida del último lote
 
     public MainWindowViewModel(
         ServicioCompresionLote servicio,
@@ -41,11 +44,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _salidaJuntoAlOriginal = preferencias.SalidaJuntoAlOriginal;
         _carpetaSalida = preferencias.CarpetaSalida ?? "";
         _crearRespaldo = preferencias.CrearRespaldo;
+
+        // RF-22: notificar cuando se añaden/quitan filas
+        Filas.CollectionChanged += AlCambiarFilas;
     }
 
     public PreferenciasUsuario Preferencias { get; }
 
     public ObservableCollection<FilaResultadoViewModel> Filas { get; } = [];
+
+    private void AlCambiarFilas(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HaySeleccionados));
+        OnPropertyChanged(nameof(TodosSeleccionados));
+        QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
+    }
 
     // ---- Ajustes enlazados a la UI (panel colapsable, sección 5.4) -----------------
 
@@ -130,14 +143,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private double _progreso;
     [ObservableProperty] private string _mensajeEstado = "Arrastra PDFs aquí para empezar.";
 
-    // ---- Resumen final destacado (sección 5.6): el ahorro total en grande, no una línea
-    //      de texto perdida entre las demás. ------------------------------------------
+    // ---- Resumen final destacado (sección 5.6): el ahorro total en grande -----------
 
     [ObservableProperty] private bool _hayResumen;
     [ObservableProperty] private string _ahorroDestacado = "";
     [ObservableProperty] private string _ahorroPorcentaje = "";
     [ObservableProperty] private string _detalleResumen = "";
     [ObservableProperty] private bool _resumenTieneProblemas;
+
+    // ---- Totales en vivo durante la compresión (RF-21) ----------------------------
+
+    [ObservableProperty] private bool _hayTotalesEnVivo;
+    [ObservableProperty] private string _totalOriginalEnVivo = "";
+    [ObservableProperty] private string _totalFinalEnVivo = "";
+    [ObservableProperty] private string _totalAhorroEnVivo = "";
+    [ObservableProperty] private string _totalAhorroPorcentajeEnVivo = "";
+
+    // ---- Computed ------------------------------------------------------------------
 
     public bool HayArchivos => Filas.Count > 0 && !Procesando && !Analizando;
 
@@ -150,6 +172,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string AvisoMotor => GhostscriptDisponible
         ? $"Ghostscript ({_compresor.RutaBinario})"
         : "Ghostscript no encontrado. macOS: brew install ghostscript · Windows: instala Ghostscript y reinicia la app.";
+
+    // ---- Selección (RF-22) ---------------------------------------------------------
+
+    /// <summary>True si al menos una fila está marcada.</summary>
+    public bool HaySeleccionados => Filas.Any(f => f.Seleccionada);
+
+    /// <summary>True si todas las filas están marcadas. El setter marca/desmarca todas a la vez
+    /// (usado por el checkbox de cabecera de la lista).</summary>
+    public bool TodosSeleccionados
+    {
+        get => Filas.Count > 0 && Filas.All(f => f.Seleccionada);
+        set
+        {
+            foreach (var f in Filas) f.Seleccionada = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HaySeleccionados));
+            QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
+        }
+    }
 
     // ---- Acciones ------------------------------------------------------------------
 
@@ -184,7 +225,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             foreach (var archivo in nuevos)
             {
                 if (!yaPresentes.Add(archivo.RutaCompleta)) continue;
-                Filas.Add(new FilaResultadoViewModel(archivo));
+
+                var fila = new FilaResultadoViewModel(archivo);
+                // RF-22: propagar cambios de selección al padre para que HaySeleccionados
+                // y TodosSeleccionados se actualicen cuando el usuario marca un checkbox.
+                fila.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(FilaResultadoViewModel.Seleccionada)) return;
+                    OnPropertyChanged(nameof(HaySeleccionados));
+                    OnPropertyChanged(nameof(TodosSeleccionados));
+                    QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
+                };
+                Filas.Add(fila);
                 agregados++;
             }
 
@@ -213,6 +265,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Procesando = true;
         Progreso = 0;
         HayResumen = false;
+        HayTotalesEnVivo = false;
+        _carpetaResultados = null;
         _cancelacion = new CancellationTokenSource();
         NotificarComandos();
 
@@ -225,19 +279,63 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var archivos = Filas.Select(f => f.Archivo).ToList();
         var porRuta = Filas.ToDictionary(f => f.Archivo.RutaCompleta, StringComparer.OrdinalIgnoreCase);
 
+        // RF-24b: orígenes mixtos → usar una sola carpeta de destino para todo el lote
+        var preferenciasLote = Preferencias;
+        if (_servicio.TieneOrigenesMixtos(archivos))
+        {
+            preferenciasLote = new PreferenciasUsuario
+            {
+                UmbralMb          = Preferencias.UmbralMb,
+                UnidadUmbral      = Preferencias.UnidadUmbral,
+                Nivel             = Preferencias.Nivel,
+                SalidaJuntoAlOriginal = false,
+                CarpetaSalida     = string.IsNullOrWhiteSpace(Preferencias.CarpetaSalida)
+                                        ? RutasApp.CarpetaSalidaPorDefecto
+                                        : Preferencias.CarpetaSalida,
+                CrearRespaldo     = Preferencias.CrearRespaldo,
+                SufijoSalida      = Preferencias.SufijoSalida,
+                RutaGhostscript   = Preferencias.RutaGhostscript,
+                GradoParalelismo  = Preferencias.GradoParalelismo
+            };
+        }
+
+        // Acumulador de resultados parciales para RF-21 (totales en vivo).
+        // Progress<T> despacha en el hilo de UI, así que la lista no necesita ser thread-safe.
+        var resultadosParciales = new List<ResultadoCompresion>();
+
         var progreso = new Progress<ProgresoLote>(p =>
         {
             Progreso = p.PorcentajeGlobal;
             MensajeEstado = $"Procesando {p.Procesados}/{p.Total} · {p.ArchivoActual}";
 
-            if (p.UltimoResultado is { } r && porRuta.TryGetValue(r.Origen.RutaCompleta, out var fila))
-                fila.Aplicar(r);
+            if (p.UltimoResultado is { } r)
+            {
+                if (porRuta.TryGetValue(r.Origen.RutaCompleta, out var fila))
+                    fila.Aplicar(r);
+
+                // RF-24: primera carpeta de salida real → botón "Abrir carpeta"
+                if (_carpetaResultados is null && r.RutaSalida is { } ruta)
+                    _carpetaResultados = Path.GetDirectoryName(ruta);
+
+                // RF-21: acumular y recalcular totales en vivo
+                resultadosParciales.Add(r);
+                var parcial = ResumenLote.De(resultadosParciales);
+                if (parcial.Comprimidos > 0)
+                {
+                    HayTotalesEnVivo = true;
+                    TotalOriginalEnVivo = ArchivoPdf.FormatearTamano(parcial.BytesOriginales);
+                    TotalFinalEnVivo    = ArchivoPdf.FormatearTamano(parcial.BytesFinales);
+                    TotalAhorroEnVivo   = parcial.AhorroLegible;
+                    TotalAhorroPorcentajeEnVivo = string.Create(
+                        CultureInfo.InvariantCulture, $"-{parcial.PorcentajeAhorro:0.#}%");
+                }
+            }
         });
 
         try
         {
             var resultados = await _servicio.ProcesarAsync(
-                archivos, Preferencias, progreso, _cancelacion.Token);
+                archivos, preferenciasLote, progreso, _cancelacion.Token);
 
             // El último Progress puede llegar tarde: reconciliamos con los resultados finales.
             foreach (var r in resultados)
@@ -258,6 +356,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _cancelacion.Dispose();
             _cancelacion = null;
             Procesando = false;
+            HayTotalesEnVivo = false;
             Progreso = 100;
             NotificarComandos();
         }
@@ -280,6 +379,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Filas.Clear();
         Progreso = 0;
         HayResumen = false;
+        HayTotalesEnVivo = false;
+        _carpetaResultados = null;
         MensajeEstado = "Lista vacía. Arrastra PDFs aquí.";
         NotificarComandos();
         OnPropertyChanged(nameof(HayArchivos));
@@ -287,11 +388,40 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private bool PuedeLimpiar() => Filas.Count > 0 && !Procesando && !Analizando;
 
+    // RF-23: quitar solo las filas seleccionadas sin vaciar el lote
+    [RelayCommand(CanExecute = nameof(PuedeQuitar))]
+    private void QuitarSeleccionados()
+    {
+        foreach (var f in Filas.Where(f => f.Seleccionada).ToList())
+            Filas.Remove(f);
+        OnPropertyChanged(nameof(HayArchivos));
+        OnPropertyChanged(nameof(HaySeleccionados));
+        OnPropertyChanged(nameof(TodosSeleccionados));
+        NotificarComandos();
+    }
+
+    private bool PuedeQuitar() => HaySeleccionados && !EstaOcupado;
+
+    // RF-24: abrir en el explorador del SO la carpeta donde quedaron los comprimidos
+    [RelayCommand(CanExecute = nameof(PuedeAbrirCarpeta))]
+    private void AbrirCarpetaResultados()
+    {
+        if (_carpetaResultados is null) return;
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _carpetaResultados,
+            UseShellExecute = true  // abre Finder en macOS, Explorador en Windows
+        });
+    }
+
+    private bool PuedeAbrirCarpeta() => HayResumen && _carpetaResultados != null;
+
     private void MostrarResumen(ResumenLote resumen)
     {
         MensajeEstado = "Proceso terminado.";
         HayResumen = true;
         ResumenTieneProblemas = resumen.Fallidos > 0;
+        AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
 
         if (resumen.Comprimidos == 0)
         {
@@ -325,5 +455,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ComprimirCommand.NotifyCanExecuteChanged();
         CancelarCommand.NotifyCanExecuteChanged();
         LimpiarCommand.NotifyCanExecuteChanged();
+        QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
+        AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
     }
 }
