@@ -27,5 +27,6 @@ se conserva sin cambios como referencia histórica del alcance.
 - **Framework:** Avalonia 11 sobre .NET 10 (macOS + Windows desde una sola base de código).
 - **Motor:** Ghostscript invocado como proceso externo, detrás de la interfaz `ICompresorPdf`.
 - **Regla inviolable:** el archivo original nunca se modifica.
-- **Estado:** Fase 1 (MVP) completa y verificada; Fase 2 parcialmente adelantada; Fase 4
-  (rediseño visual) planificada en [07-PLAN-DISENO.md](07-PLAN-DISENO.md), sin empezar.
+- **Estado:** Fase 1 y Fase 2 (salvo RF-11 vista previa) completas. Fase 4 (rediseño visual):
+  sub-fases 4.0–4.5 implementadas y verificadas con datos reales; 4.6–4.7 parciales. Fase 5
+  (lotes grandes): RF-19 y RF-25 hechos; RF-21 a RF-24b pendientes.

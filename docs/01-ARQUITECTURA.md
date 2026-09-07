@@ -17,7 +17,8 @@ CompresorPdf.slnx
 │
 ├── src/CompresorPdf.Core        ← sin dependencias externas (sólo BCL)
 │   ├── Models/                  ArchivoPdf, ResultadoCompresion, PerfilCompresion,
-│   │                            NivelCompresion, EstadoCompresion, ProgresoLote
+│   │                            NivelCompresion, EstadoCompresion, ProgresoLote,
+│   │                            ProgresoAnalisis, UnidadTamano
 │   ├── Services/
 │   │   ├── ICompresorPdf        contrato del motor
 │   │   ├── CompresorGhostscript implementación vía proceso externo
@@ -36,7 +37,7 @@ CompresorPdf.slnx
 │   ├── Views/                   MainWindow (drag&drop y diálogos de archivo)
 │   └── Converters/
 │
-└── tests/CompresorPdf.Tests     ← xunit; 36 unitarias + 3 de integración real
+└── tests/CompresorPdf.Tests     ← xunit; 40 unitarias + 3 de integración real
 ```
 
 ## El flujo, de arriba abajo
@@ -45,7 +46,7 @@ CompresorPdf.slnx
  Usuario suelta archivos
          │
          ▼
- MainWindow.AlSoltar ──────────► MainWindowViewModel.AgregarRutas
+ MainWindow.AlSoltar ──────────► MainWindowViewModel.AgregarRutasAsync
                                           │
                                           ▼
                          ServicioCompresionLote.Preparar
