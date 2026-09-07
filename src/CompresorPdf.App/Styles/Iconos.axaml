@@ -1,0 +1,65 @@
+<!--
+  Set de íconos de la app (plan de diseño, sección 5.5). Geometrías en un lienzo de 24x24,
+  pensadas para dibujarse con Stroke (línea, no relleno) salvo que se indique lo contrario.
+  Se consumen con <Path Data="{StaticResource IconoX}" Stroke="..." StrokeThickness="1.75"
+  StrokeLineCap="Round" StrokeJoin="Round" Stretch="Uniform" .../>.
+
+  Diez formas cubren toda la interfaz: no hay una librería de íconos de por medio, igual que
+  Core no tiene dependencias — es la misma filosofía aplicada a la UI.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Documento con flecha hacia abajo: zona de carga vacía, ícono conceptual de "subir". -->
+  <Geometry x:Key="IconoSubir">
+    M6 3 H14 L18 7 V21 H6 Z M14 3 V7 H18 M12 9 V16 M8.5 12.5 L12 16 L15.5 12.5
+  </Geometry>
+
+  <!-- Check: estado Comprimido. -->
+  <Geometry x:Key="IconoCheck">M4 12.5 L9.5 18 L20 6</Geometry>
+
+  <!-- Guion: estado Omitido / Ya optimizado. La ligerísima pendiente (12 → 12.01) es
+       deliberada: una línea perfectamente horizontal tiene una caja delimitadora de
+       altura cero, y Stretch="Uniform" la escala mal (se ve casi invisible) — verificado
+       al renderizar el botón de minimizar de la barra de título. Con esta pendiente
+       imperceptible el bug desaparece y el trazo se sigue viendo perfectamente recto. -->
+  <Geometry x:Key="IconoMinus">M5 12 L19 12.01</Geometry>
+
+  <!-- Candado: estado Protegido. -->
+  <Geometry x:Key="IconoCandado">
+    M5 11 H19 V21 H5 Z M8 11 V7 A4 4 0 0 1 16 7 V11
+  </Geometry>
+
+  <!-- Triángulo de aviso: estados Corrupto / Error. El punto final es un StrokeLineCap
+       redondo sobre un segmento de longitud casi nula: así el "." de la exclamación no
+       necesita relleno aparte. -->
+  <Geometry x:Key="IconoAdvertencia">
+    M12 3 L22 20 H2 Z M12 9 V14 M12 17.2 V17.4
+  </Geometry>
+
+  <!-- X: estado Cancelado, y también el botón de cerrar ventana. -->
+  <Geometry x:Key="IconoCancelado">M6 6 L18 18 M18 6 L6 18</Geometry>
+
+  <!-- Arco abierto: estado Procesando. Se anima con una rotación continua (ver
+       Styles/Controles.axaml, clase "girando"). -->
+  <Geometry x:Key="IconoEspiral">M18.5 12 A6.5 6.5 0 1 1 12 5.5</Geometry>
+
+  <!-- Carpeta: botón "Elegir carpeta de salida". -->
+  <Geometry x:Key="IconoCarpeta">M3 6 H9 L11 8 H21 V19 H3 Z</Geometry>
+
+  <!-- Papelera: botón "Limpiar". -->
+  <Geometry x:Key="IconoPapelera">
+    M4 7 H20 M9 7 V4 H15 V7 M6 7 L7 21 H17 L18 7 M10 11 V17 M14 11 V17
+  </Geometry>
+
+  <!-- Más: botón "Añadir archivos". -->
+  <Geometry x:Key="IconoMas">M12 5 V19 M5 12 H19</Geometry>
+
+  <!-- Filtros/ajustes: ícono de la barra de título que abre el panel colapsable. -->
+  <Geometry x:Key="IconoAjustes">M4 7 H14 M4 12 H20 M4 17 H10</Geometry>
+
+  <!-- Ventana: minimizar reutiliza IconoMinus, cerrar reutiliza IconoCancelado. -->
+  <Geometry x:Key="IconoMaximizar">M5 5 H19 V19 H5 Z</Geometry>
+  <Geometry x:Key="IconoRestaurar">M8 8 H19 V19 H8 Z M5 5 H16 V8 H8 V16 H5 Z</Geometry>
+
+</ResourceDictionary>

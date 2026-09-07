@@ -1,0 +1,19 @@
+# Normaliza los finales de línea a LF en el repositorio, sin importar el SO de quien
+# clona. Evita diffs ruidosos y bugs sutiles en publicar-windows.ps1 cuando se edita desde
+# Windows con autocrlf activado.
+* text=auto eol=lf
+
+# Los scripts de PowerShell funcionan igual con LF (PowerShell 7+ y Windows PowerShell 5.1
+# ambos lo soportan); si algún día da problemas en un equipo Windows viejo, cambiar a
+# "eol=crlf" sólo para este archivo.
+*.ps1 text eol=lf
+*.sh  text eol=lf
+
+# Binarios: nunca tocar finales de línea ni intentar diff de texto.
+*.icns  binary
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.dll   binary
+*.exe   binary

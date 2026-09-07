@@ -1,0 +1,27 @@
+# Compilación .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+TestResults/
+*.trx
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+*.swp
+*~
+
+# macOS
+.DS_Store
+._*
+
+# Salidas de la propia app
+comprimidos/
+originales/
+*.log

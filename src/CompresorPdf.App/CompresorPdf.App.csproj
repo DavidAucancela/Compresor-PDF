@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RootNamespace>CompresorPdf.App</RootNamespace>
+    <AssemblyName>CompresorPdf</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>David Aucancela</Company>
+    <Product>Compresor de PDFs</Product>
+    <ApplicationIcon>../../build/CompresorPdf.ico</ApplicationIcon>
+    <!-- Semi.Avalonia construye CultureInfo reales (es-ES, zh-CN...) en su inicialización
+         estática (ADR-007); el modo invariante global de Directory.Build.props lo rompe. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.20" />
+    <!-- Semi.Avalonia sustituye a FluentTheme (ADR-007, plan de diseño Fase 4). Fijado a la
+         última versión de la serie 11.3.x para no saltar a Avalonia 12 en esta fase. -->
+    <PackageReference Include="Semi.Avalonia" Version="11.3.14" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.20" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../CompresorPdf.Core/CompresorPdf.Core.csproj" />
+  </ItemGroup>
+
+</Project>

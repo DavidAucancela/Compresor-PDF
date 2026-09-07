@@ -1,0 +1,158 @@
+<!--
+  Estilos propios que se apoyan en Semi.Avalonia (ADR-007) en vez de sustituirlo: sólo lo que
+  Semi no trae de fábrica — el ícono girando de "Procesando", el chip de reducción, el
+  selector segmentado de nivel y los botones de la barra de título propia (plan de diseño,
+  secciones 4.5, 5.1, 5.4, 5.6).
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Ícono "Procesando": rotación continua. RenderTransformOrigin centrado, si no el
+       ícono orbita en vez de girar sobre sí mismo. Se anima el ángulo del RotateTransform
+       directamente (Property="RotateTransform.Angle") — animar la propiedad RenderTransform
+       completa falla en tiempo de ejecución ("No animator registered for RenderTransform"),
+       verificado empíricamente antes de fijar este enfoque. -->
+  <Style Selector="Path.girando">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform">
+      <RotateTransform Angle="0" />
+    </Setter>
+    <Style.Animations>
+      <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+        <KeyFrame Cue="0%">
+          <Setter Property="RotateTransform.Angle" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="RotateTransform.Angle" Value="360" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Chip de porcentaje de reducción (sección 5.3): el dato que el usuario vino a ver. -->
+  <Style Selector="Border.chip">
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="Border.chip.exito">
+    <Setter Property="Background" Value="{DynamicResource SemiColorSuccessLight}" />
+  </Style>
+  <Style Selector="Border.chip.exito TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorSuccess}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <!-- Colores de estado (sección 4.1): el ViewModel sólo expone claves semánticas
+       (Classes.exito, .neutral, .aviso, .peligro, .acento); el color real sale de los
+       tokens de Semi.Avalonia, así que el tema claro/oscuro se respeta gratis. -->
+  <Style Selector="Path.exito">
+    <Setter Property="Stroke" Value="{DynamicResource SemiColorSuccess}" />
+  </Style>
+  <Style Selector="Path.neutral">
+    <Setter Property="Stroke" Value="{DynamicResource SemiColorText3}" />
+  </Style>
+  <Style Selector="Path.aviso">
+    <Setter Property="Stroke" Value="{DynamicResource SemiColorWarning}" />
+  </Style>
+  <Style Selector="Path.peligro">
+    <Setter Property="Stroke" Value="{DynamicResource SemiColorDanger}" />
+  </Style>
+  <Style Selector="Path.acento">
+    <Setter Property="Stroke" Value="{DynamicResource SemiColorPrimary}" />
+  </Style>
+
+  <!-- Fila de archivo (sección 5.3): resalte sutil al pasar el cursor. -->
+  <Style Selector="Border.fila-archivo">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.fila-archivo:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
+  </Style>
+
+  <!-- Zona de carga (sección 5.2): borde de acento pulsante mientras se arrastra un
+       archivo encima. La clase "arrastrando" la conmuta el code-behind. -->
+  <Style Selector="Border.zona-carga">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.zona-carga.arrastrando">
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+    <Style.Animations>
+      <Animation Duration="0:0:0.9" IterationCount="INFINITE" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Botón de texto completo, clicable, del estado vacío (sección 5.2). -->
+  <Style Selector="Button.zona-carga-boton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.zona-carga-boton:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <!-- Selector segmentado del nivel de compresión (sección 5.4): tres ToggleButton en un
+       mismo GroupName, visualmente fundidos en una sola pastilla. -->
+  <Style Selector="ToggleButton.segmento">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="14,6" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText1}" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.segmento:checked">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground0}" />
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- Botones de la barra de título propia (sección 5.1): minimizar / maximizar / cerrar.
+       Planos por defecto, fondo sutil al pasar el cursor; el de cerrar se pone rojo, como
+       en cualquier chrome de ventana reconocible. -->
+  <Style Selector="Button.boton-ventana">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.boton-ventana:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
+  </Style>
+  <Style Selector="Button.boton-ventana.cerrar:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SemiColorDanger}" />
+  </Style>
+  <Style Selector="Button.boton-ventana.cerrar:pointerover Path">
+    <Setter Property="Stroke" Value="White" />
+  </Style>
+
+</Styles>

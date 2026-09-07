@@ -1,0 +1,57 @@
+%!PS-Adobe-3.0
+% Icono de la aplicación, 1024x1024. Se renderiza con Ghostscript a PNG y de ahí
+% sale el .icns (macOS) y el .ico (Windows). Vectorial: escala sin perder nitidez.
+
+/rrect {                      % x y ancho alto radio  ->  trazado
+  /r exch def /h exch def /w exch def /y exch def /x exch def
+  newpath
+  x r add y moveto
+  x w add y          x w add y h add  r arcto 4 {pop} repeat
+  x w add y h add    x y h add        r arcto 4 {pop} repeat
+  x y h add          x y              r arcto 4 {pop} repeat
+  x y                x w add y        r arcto 4 {pop} repeat
+  closepath
+} def
+
+% --- Fondo: cuadrado redondeado con degradado azul -------------------------
+gsave
+  0 0 1024 1024 224 rrect
+  clip
+  <<
+    /ShadingType 2
+    /ColorSpace /DeviceRGB
+    /Coords [0 1024 0 0]
+    /Function <<
+      /FunctionType 2 /Domain [0 1]
+      /C0 [0.290 0.561 0.976]      % #4A8FF9 arriba
+      /C1 [0.078 0.247 0.729]      % #143FBA abajo
+      /N 1
+    >>
+    /Extend [true true]
+  >> shfill
+grestore
+
+% --- Hoja de papel ---------------------------------------------------------
+gsave
+  % borde inferior más oscuro: da profundidad sin usar transparencia
+  0.898 0.918 0.949 setrgbcolor
+  300 232 424 560 30 rrect fill
+  1 setgray
+  300 240 424 560 30 rrect fill
+grestore
+
+% --- Flecha descendente: "reducir" ----------------------------------------
+gsave
+  0.078 0.247 0.729 setrgbcolor
+  newpath
+    512 336 moveto            % punta
+    398 484 lineto
+    467 484 lineto
+    467 706 lineto
+    557 706 lineto
+    557 484 lineto
+    626 484 lineto
+  closepath fill
+grestore
+
+showpage

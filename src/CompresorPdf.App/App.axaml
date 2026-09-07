@@ -1,0 +1,22 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:semi="https://irihi.tech/semi"
+             x:Class="CompresorPdf.App.Aplicacion"
+             RequestedThemeVariant="Default">
+
+  <Application.Styles>
+    <!-- Semi.Avalonia sustituye a FluentTheme (ADR-007). El azul de acento es el suyo
+         propio: no se puede inyectar el de marca desde fuera, ver la nota en el ADR. -->
+    <semi:SemiTheme Locale="es-ES" />
+    <StyleInclude Source="avares://CompresorPdf/Styles/Controles.axaml" />
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://CompresorPdf/Styles/Iconos.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+</Application>
