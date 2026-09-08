@@ -30,7 +30,7 @@ se conserva sin cambios como referencia histórica del alcance.
 - **Framework:** Avalonia 11 sobre .NET 10 (macOS + Windows desde una sola base de código).
 - **Motor:** Ghostscript invocado como proceso externo, detrás de la interfaz `ICompresorPdf`.
 - **Regla inviolable:** el archivo original nunca se modifica.
-- **Estado:** Fase 1 y Fase 2 (salvo RF-11 vista previa) completas. Fase 4 (rediseño visual):
-  sub-fases 4.0–4.5 implementadas y verificadas con datos reales; 4.6–4.7 parciales. Fase 5
-  (lotes grandes): completa — RF-19, RF-21, RF-22, RF-23, RF-24, RF-24b y RF-25 implementados.
-  MSI de Windows verificado en máquina real.
+- **Estado:** Fases 1, 2 (salvo RF-11 vista previa), 4, 5 y 6 completas. Fase 7: tema
+  oscuro/claro con toggle persistido, mensaje informativo tras cada operación, copia automática
+  de omitidos a la carpeta de salida y eliminación del botón "Descargar". MSI de Windows
+  verificado en máquina real.

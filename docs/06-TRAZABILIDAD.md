@@ -32,15 +32,16 @@ Cada requisito del plan original, dónde está implementado y qué prueba lo fij
 | RF-24 | Botón "Abrir carpeta de resultados" | ✅ | `MainWindowViewModel.AbrirCarpetaResultadosCommand` (`Process.Start(UseShellExecute=true)`), botón en footer | — |
 | RF-24b | Carpeta de salida consolidada (orígenes mixtos) | ✅ | `GestorArchivos.TieneOrigenesMixtos`, `ServicioCompresionLote` passthrough, lógica de clone en `ComprimirAsync` | `TieneOrigenesMixtos_devuelve_true_cuando_hay_mas_de_una_carpeta_origen`, `TieneOrigenesMixtos_devuelve_false_cuando_todos_vienen_del_mismo_directorio` |
 | RF-25 | Unidad del umbral configurable (KB/MB) | ✅ | `MainWindowViewModel.UmbralValor`/`UnidadUmbral`, `PreferenciasUsuario.UnidadUmbral` | `La_unidad_del_umbral_es_MB_por_defecto`, `Las_preferencias_sobreviven_a_un_ciclo_guardar_cargar` |
-| RF-26 | Configuración en panel lateral visible y plegable (ADR-008) | 🟡 en curso | `MainWindow.axaml` (panel), `MainWindowViewModel.PanelConfigVisible`, `PreferenciasUsuario.PanelConfiguracionVisible` | `El_estado_del_panel_de_configuracion_sobrevive_a_un_ciclo_guardar_cargar` |
-| RF-27 | DPI de imágenes configurable | 🟡 sólo Core | `PreferenciasUsuario.DpiImagenes` + `APerfil()`, `CompresorGhostscript.ConstruirArgumentos`. Sin control en la UI (retirado por el usuario) | `APerfil_propaga_dpi_grises_y_compatibilidad_al_motor` |
-| RF-28 | Convertir a escala de grises | 🟡 en curso | `PreferenciasUsuario.EscalaDeGrises` + `APerfil()`, casilla en el panel | `Escala_de_grises_anade_la_conversion_de_color` (motor) + `Los_ajustes_de_usuario_llegan_al_motor_a_traves_de_APerfil` |
-| RF-29 | Sufijo de salida editable en la UI | 🟡 en curso | `PreferenciasUsuario.SufijoSalida` (ya existía), control en `MainWindow.axaml` | `Las_preferencias_sobreviven_a_un_ciclo_guardar_cargar` |
-| RF-30 | Ruta manual de Ghostscript en la UI + "volver a comprobar" | 🟡 lógica lista, UI oculta | `PreferenciasUsuario.RutaGhostscript`, `MainWindowViewModel.VolverAComprobarMotorCommand`, `MainWindow.AlElegirGhostscript`, factory en `App.axaml.cs`. La sección se ocultó del panel por decisión del usuario; el cableado queda para reactivarla | ciclo guardar/cargar + `LocalizadorGhostscript` (ruta manual gana al PATH) |
-| RF-31 | Grado de paralelismo configurable en la UI | 🟡 en curso | `PreferenciasUsuario.GradoParalelismo` (ya existía), `ServicioCompresionLote.ProcesarAsync` | ciclo guardar/cargar + clamp mínimo 1 |
-| RF-32 | Nivel de compatibilidad PDF configurable (opcional) | 🟡 sólo Core | `PreferenciasUsuario.NivelCompatibilidad` + `APerfil()` (default `1.7`). Sin control en la UI (retirado por el usuario) | `APerfil_propaga_dpi_grises_y_compatibilidad_al_motor` |
-| RF-33 | "Descargar comprimidos" a la carpeta de salida + total antes/después | 🟡 en curso | `GestorArchivos.CopiarA`, `ServicioCompresionLote.CopiarComprimidos`, `MainWindowViewModel.DescargarComprimidosCommand`/`ResumenDescarga`, botón en el footer | `CopiarA_reune_los_archivos_en_la_carpeta_destino`, `CopiarA_omite_los_que_ya_estan_en_la_carpeta_destino`, `CopiarA_no_pisa_un_nombre_que_ya_existe_en_el_destino` |
-| RF-34 | Reintentar sólo los archivos en Error, fusionando con el lote anterior | 🟡 en curso | `MainWindowViewModel.ReintentarFallidosCommand`/`EjecutarLoteAsync`/`FusionarResultados`/`HayFallidos`; carrera de ruta de salida cerrada en `ServicioCompresionLote` (cerrojo + placeholder); guard de salida vacía en `ServicioCompresionLote` y `CompresorGhostscript` | `Dos_pdf_con_el_mismo_nombre_no_se_pisan_al_ir_a_una_carpeta_unica`, `Si_el_motor_dice_ok_pero_no_escribe_nada_se_marca_Error`, `Una_reduccion_insignificante_no_muestra_porcentaje` |
+| RF-26 | Configuración en panel lateral visible y plegable (ADR-008) | ✅ | `MainWindow.axaml` (panel), `MainWindowViewModel.PanelConfigVisible`, `PreferenciasUsuario.PanelConfiguracionVisible` | `El_estado_del_panel_de_configuracion_sobrevive_a_un_ciclo_guardar_cargar` |
+| RF-27 | DPI de imágenes configurable | ✅ sólo Core | `PreferenciasUsuario.DpiImagenes` + `APerfil()`, `CompresorGhostscript.ConstruirArgumentos`. Sin control en la UI (retirado por el usuario) | `APerfil_propaga_dpi_grises_y_compatibilidad_al_motor` |
+| RF-28 | Convertir a escala de grises | ✅ | `PreferenciasUsuario.EscalaDeGrises` + `APerfil()`, casilla en el panel | `Escala_de_grises_anade_la_conversion_de_color` (motor) + `Los_ajustes_de_usuario_llegan_al_motor_a_traves_de_APerfil` |
+| RF-29 | Sufijo de salida editable en la UI | ✅ | `PreferenciasUsuario.SufijoSalida` (ya existía), control en `MainWindow.axaml` | `Las_preferencias_sobreviven_a_un_ciclo_guardar_cargar` |
+| RF-30 | Ruta manual de Ghostscript en la UI + "volver a comprobar" | ✅ lógica lista, UI oculta | `PreferenciasUsuario.RutaGhostscript`, `MainWindowViewModel.VolverAComprobarMotorCommand`, `MainWindow.AlElegirGhostscript`, factory en `App.axaml.cs`. La sección se ocultó del panel por decisión del usuario; el cableado queda para reactivarla | ciclo guardar/cargar + `LocalizadorGhostscript` (ruta manual gana al PATH) |
+| RF-31 | Grado de paralelismo configurable en la UI | ✅ | `PreferenciasUsuario.GradoParalelismo` (ya existía), `ServicioCompresionLote.ProcesarAsync` | ciclo guardar/cargar + clamp mínimo 1 |
+| RF-32 | Nivel de compatibilidad PDF configurable (opcional) | ✅ sólo Core | `PreferenciasUsuario.NivelCompatibilidad` + `APerfil()` (default `1.7`). Sin control en la UI (retirado por el usuario) | `APerfil_propaga_dpi_grises_y_compatibilidad_al_motor` |
+| RF-33 | Reunir todos los archivos del lote en la carpeta de salida (automático al terminar la compresión) | ✅ | `GestorArchivos.CopiarA`, `ServicioCompresionLote.CopiarComprimidos`, `MainWindowViewModel.ReunirOmitidosAutomaticamente` (invocado tras cada lote; copia comprimidos + originales de omitidos/sin-ganancia) | `CopiarComprimidos_incluye_omitidos_junto_a_los_comprimidos`, `CopiarComprimidos_incluye_sin_ganancia_junto_a_los_comprimidos` |
+| RF-34 | Reintentar sólo los archivos en Error, fusionando con el lote anterior | ✅ | `MainWindowViewModel.ReintentarFallidosCommand`/`EjecutarLoteAsync`/`FusionarResultados`/`HayFallidos`; carrera de ruta de salida cerrada en `ServicioCompresionLote` (cerrojo + placeholder); guard de salida vacía en `ServicioCompresionLote` y `CompresorGhostscript` | `Dos_pdf_con_el_mismo_nombre_no_se_pisan_al_ir_a_una_carpeta_unica`, `Si_el_motor_dice_ok_pero_no_escribe_nada_se_marca_Error`, `Una_reduccion_insignificante_no_muestra_porcentaje` |
+| RF-35 | Tema oscuro/claro con toggle persistido (ADR-009) | ✅ | `PreferenciasUsuario.TemaOscuro`, `MainWindowViewModel.AlternarTemaCommand`, `MainWindow.AplicarTema` → `Application.RequestedThemeVariant`; iconos `IconoSol`/`IconoLuna` en `Styles/Iconos.axaml` | — |
 
 ## Requisitos no funcionales
 
@@ -60,11 +61,9 @@ Cada requisito del plan original, dónde está implementado y qué prueba lo fij
 **57 pruebas, todas en verde** (54 unitarias + 3 de integración contra Ghostscript real).
 
 - **Fase 1 (MVP): completa.** 15 de 15.
-- Fase 2: completa salvo RF-11 (vista previa). 4 de 5.
+- **Fase 2: completa** salvo RF-11 (vista previa). 4 de 5.
 - Fase 3: dos requisitos con base parcial, el resto sin empezar.
-- **Fase 5 (lotes grandes): completa.** RF-19 a RF-25 implementados (RF-20 heredado de fases anteriores).
-- **Fase 6 (config visible + pulido): en curso.** RF-26 a RF-34 con el código y las pruebas
-  unitarias ya integrados; falta la QA manual de la Parte C (tema claro, chrome de ventana,
-  humo con Ghostscript real).
-- **Total: 27 de 42 requisitos cerrados**, 2 parciales (RF-14, RF-18), 9 en curso
-  (RF-26…RF-34), 4 pendientes (RF-11, RF-15, RF-16, RF-17).
+- **Fase 5 (lotes grandes): completa.** RF-19 a RF-25 implementados.
+- **Fase 6 (config visible + pulido): completa.** RF-26 a RF-34 implementados.
+- **Fase 7 (tema + mejoras UX): completa.** RF-35 (tema oscuro/claro), mensaje informativo persistente, reunión automática de omitidos, eliminación del botón Descargar.
+- **Total: 36 de 43 requisitos cerrados**, 2 parciales (RF-14, RF-18), 4 pendientes (RF-11, RF-15, RF-16, RF-17).
