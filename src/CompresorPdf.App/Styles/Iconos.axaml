@@ -68,4 +68,10 @@
   <Geometry x:Key="IconoMaximizar">M5 5 H19 V19 H5 Z</Geometry>
   <Geometry x:Key="IconoRestaurar">M8 8 H19 V19 H8 Z M5 5 H16 V8 H8 V16 H5 Z</Geometry>
 
+  <!-- Sol: botón de tema claro. Círculo central + 4 rayos cardinales. -->
+  <Geometry x:Key="IconoSol">M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M7 12 A5 5 0 0 1 17 12 A5 5 0 0 1 7 12</Geometry>
+
+  <!-- Luna: botón de tema oscuro. Dos arcos forman la media luna. -->
+  <Geometry x:Key="IconoLuna">M21 12.79 A9 9 0 1 1 11.21 3 A7 7 0 0 0 21 12.79</Geometry>
+
 </ResourceDictionary>

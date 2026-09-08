@@ -55,6 +55,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _gradoParalelismo = preferencias.GradoParalelismo;
         _rutaGhostscript = preferencias.RutaGhostscript ?? "";
         _panelConfigVisible = preferencias.PanelConfiguracionVisible;
+        _temaOscuro = preferencias.TemaOscuro;
 
         // RF-22: notificar cuando se añaden/quitan filas
         Filas.CollectionChanged += AlCambiarFilas;
@@ -112,6 +113,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>RF-26 / ADR-008: el panel lateral de configuración está desplegado o plegado.</summary>
     [ObservableProperty] private bool _panelConfigVisible;
+
+    /// <summary>Tema oscuro activo. El code-behind reacciona al cambio para llamar a
+    /// Application.RequestedThemeVariant. Se persiste al instante igual que el panel.</summary>
+    [ObservableProperty] private bool _temaOscuro;
 
     /// <summary>Tope del grado de paralelismo: no tiene sentido pasar del número de núcleos,
     /// que es donde el propio orquestador lo recorta.</summary>
@@ -202,16 +207,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _detalleResumen = "";
     [ObservableProperty] private bool _resumenTieneProblemas;
 
-    // ---- Descargar los comprimidos a una carpeta única (RF-33) --------------------
+    // ---- Resultados del último lote (RF-33: reunión automática de omitidos) -------
 
-    /// <summary>Resultados del último lote, para poder copiarlos después con "Descargar".</summary>
     private IReadOnlyList<ResultadoCompresion> _ultimosResultados = [];
 
-    /// <summary>True cuando hay al menos un comprimido que se puede reunir en la carpeta de salida.</summary>
-    [ObservableProperty] private bool _hayDescarga;
+    // ---- Mensaje informativo persistente (visible tras cada operación clave) ------
 
-    /// <summary>"N comprimido(s) · 45.2 MB → 12.1 MB" — total antes/después de los comprimidos.</summary>
-    [ObservableProperty] private string _resumenDescarga = "";
+    /// <summary>Resumen que persiste después de que termina la animación de progreso:
+    /// cuántos archivos se cargaron, dónde quedaron los comprimidos, qué copió "Descargar"…</summary>
+    [ObservableProperty] private string _mensajeInformativo = "";
 
     // ---- Totales en vivo durante la compresión (RF-21) ----------------------------
 
@@ -302,9 +306,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 agregados++;
             }
 
-            MensajeEstado = agregados == 0
-                ? "No se añadió ningún PDF nuevo."
-                : $"{Filas.Count} archivo(s) en la lista · {agregados} añadido(s).";
+            if (agregados == 0)
+            {
+                MensajeEstado = "No se añadió ningún PDF nuevo.";
+            }
+            else
+            {
+                MensajeEstado = $"{Filas.Count} archivo(s) en la lista · {agregados} añadido(s).";
+                var umbral = Preferencias.UmbralBytes;
+                var aComprimir = Filas.Count(f => !f.Archivo.EsCorrupto && !f.Archivo.EstaProtegido
+                                                  && f.Archivo.TamanoBytes > umbral);
+                var conProblemas = Filas.Count(f => f.Archivo.EsCorrupto || f.Archivo.EstaProtegido);
+                var aOmitir = Filas.Count - aComprimir - conProblemas;
+                MensajeInformativo =
+                    $"{Filas.Count} archivo(s) cargados · {aComprimir} superan el umbral" +
+                    (aOmitir > 0 ? $" · {aOmitir} se omitirán (bajo el umbral)" : "") +
+                    (conProblemas > 0 ? $" · {conProblemas} con problemas" : "") + ".";
+            }
         }
         catch (Exception ex)
         {
@@ -350,9 +368,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!esReintento)
         {
             HayResumen = false;
-            HayDescarga = false;
             _ultimosResultados = [];
             _carpetaResultados = null;
+            MensajeInformativo = "";
         }
         _cancelacion = new CancellationTokenSource();
         NotificarComandos();
@@ -437,6 +455,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // RF-33 / reintento: fusionamos con lo que ya había para no perder el resto del lote.
             _ultimosResultados = FusionarResultados(_ultimosResultados, resultados);
             MostrarResumen(ResumenLote.De(_ultimosResultados));
+
+            // Con carpeta de salida explícita, los omitidos/sin-ganancia no llegan solos
+            // a la carpeta de salida durante la compresión. Los copiamos aquí para que el
+            // usuario encuentre todos sus archivos en un solo sitio sin tener que pulsar
+            // "Descargar" manualmente.
+            ReunirOmitidosAutomaticamente(preferenciasLote);
         }
         catch (Exception ex)
         {
@@ -484,10 +508,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Progreso = 0;
         HayResumen = false;
         HayTotalesEnVivo = false;
-        HayDescarga = false;
         _ultimosResultados = [];
         _carpetaResultados = null;
         MensajeEstado = "Lista vacía. Arrastra PDFs aquí.";
+        MensajeInformativo = "";
         NotificarComandos();
         OnPropertyChanged(nameof(HayArchivos));
     }
@@ -523,37 +547,41 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool PuedeAbrirCarpeta() => HayResumen && _carpetaResultados != null;
 
     /// <summary>
-    /// RF-33: copia todos los PDF comprimidos del último lote a la carpeta de salida
-    /// configurada, para reunirlos en un solo sitio (útil cuando se guardaron junto a cada
-    /// original). No mueve nada: el original y el comprimido en su sitio quedan intactos.
+    /// Cuando hay carpeta de salida explícita (SalidaJuntoAlOriginal=false), los archivos
+    /// omitidos/sin-ganancia no llegan ahí solos durante la compresión: Ghostscript sólo
+    /// actúa sobre los que superan el umbral. Este método los copia automáticamente al
+    /// terminar el lote para que el usuario encuentre todos sus archivos en un solo sitio.
     /// </summary>
-    [RelayCommand(CanExecute = nameof(PuedeDescargar))]
-    private void DescargarComprimidos()
+    private void ReunirOmitidosAutomaticamente(PreferenciasUsuario prefs)
     {
-        var carpeta = CarpetaSalida?.Trim();
-        if (string.IsNullOrWhiteSpace(carpeta)) carpeta = Preferencias.CarpetaSalida;
-        if (string.IsNullOrWhiteSpace(carpeta)) carpeta = RutasApp.CarpetaSalidaPorDefecto;
+        if (prefs.SalidaJuntoAlOriginal || string.IsNullOrWhiteSpace(prefs.CarpetaSalida))
+            return;
+
+        var hayOmitidos = _ultimosResultados.Any(
+            r => r.Estado is EstadoCompresion.Omitido or EstadoCompresion.SinGanancia);
+        if (!hayOmitidos) return;
 
         try
         {
-            var copiados = _servicio.CopiarComprimidos(_ultimosResultados, carpeta);
-            _carpetaResultados = carpeta;
+            var copiados = _servicio.CopiarComprimidos(_ultimosResultados, prefs.CarpetaSalida);
+            _carpetaResultados ??= prefs.CarpetaSalida;
             AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
 
-            MensajeEstado = copiados.Count == 0
-                ? "Los comprimidos ya estaban en la carpeta de salida."
-                : $"{copiados.Count} comprimido(s) descargado(s) en {carpeta}.";
+            var resumen = ResumenLote.De(_ultimosResultados);
+            var totalDesc = resumen.Comprimidos + resumen.Omitidos;
+            MensajeInformativo = copiados.Count == 0
+                ? $"Proceso terminado: {totalDesc} archivo(s) en {prefs.CarpetaSalida} " +
+                  $"({resumen.Comprimidos} comprimidos + {resumen.Omitidos} sin cambios ya presentes)" +
+                  (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas" : "") + "."
+                : $"Proceso terminado: {totalDesc} archivo(s) reunidos en {prefs.CarpetaSalida} " +
+                  $"({resumen.Comprimidos} comprimidos + {copiados.Count} originales copiados)" +
+                  (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas" : "") + ".";
         }
         catch (Exception ex)
         {
-            _registro.Error("Fallo al descargar los comprimidos", ex);
-            MensajeEstado = $"No se pudieron descargar los comprimidos: {ex.Message}";
+            _registro.Error("Error al reunir los omitidos automáticamente", ex);
         }
     }
-
-    private bool PuedeDescargar() =>
-        HayResumen && !EstaOcupado &&
-        _ultimosResultados.Any(r => r.Estado == EstadoCompresion.Comprimido);
 
     private void MostrarResumen(ResumenLote resumen)
     {
@@ -563,23 +591,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(HayFallidos));
         ReintentarFallidosCommand.NotifyCanExecuteChanged();
 
-        // RF-33: total antes/después de los comprimidos + habilitar "Descargar".
-        HayDescarga = resumen.Comprimidos > 0;
-        ResumenDescarga = resumen.Comprimidos > 0
-            ? $"{resumen.Comprimidos} comprimido(s) · " +
-              $"{ArchivoPdf.FormatearTamano(resumen.BytesOriginales)} → " +
-              $"{ArchivoPdf.FormatearTamano(resumen.BytesFinales)}"
-            : "";
-
         AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
-        DescargarComprimidosCommand.NotifyCanExecuteChanged();
 
         if (resumen.Comprimidos == 0)
         {
             AhorroDestacado = "Sin cambios";
             AhorroPorcentaje = "";
-            DetalleResumen = $"{resumen.Total} archivo(s): ninguno necesitó compresión" +
-                              (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas." : ".");
+            var todosConProblemas = resumen.Fallidos > 0 && resumen.Omitidos == 0;
+            DetalleResumen = todosConProblemas
+                ? $"{resumen.Total} archivo(s) con problemas."
+                : $"{resumen.Total} archivo(s): ninguno superó el umbral" +
+                  (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas." : ".");
+            MensajeInformativo = todosConProblemas
+                ? $"Sin resultados: {resumen.Fallidos} archivo(s) presentaron problemas."
+                : $"Ninguno superó el umbral · {resumen.Omitidos} omitido(s)" +
+                  (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas" : "") + ".";
             return;
         }
 
@@ -587,6 +613,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         AhorroPorcentaje = string.Create(CultureInfo.InvariantCulture, $"-{resumen.PorcentajeAhorro:0.#}%");
         DetalleResumen = $"{resumen.Comprimidos} comprimido(s) · {resumen.Omitidos} omitido(s)" +
                           (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas" : "");
+
+        var rutaMsg = _carpetaResultados is not null ? $" guardados en {_carpetaResultados}" : "";
+        MensajeInformativo = $"Proceso terminado: {resumen.Comprimidos} comprimido(s){rutaMsg}" +
+                             $" · {resumen.Omitidos} omitido(s)" +
+                             (resumen.Fallidos > 0 ? $" · {resumen.Fallidos} con problemas" : "") + ".";
     }
 
     /// <summary>Vuelca los ajustes de la UI al modelo y los persiste (RNF-07).</summary>
@@ -604,6 +635,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Preferencias.GradoParalelismo = Math.Clamp(GradoParalelismo, 1, MaxParalelismo);
         Preferencias.RutaGhostscript = string.IsNullOrWhiteSpace(RutaGhostscript) ? null : RutaGhostscript.Trim();
         Preferencias.PanelConfiguracionVisible = PanelConfigVisible;
+        Preferencias.TemaOscuro = TemaOscuro;
         _repositorio.Guardar(Preferencias);
     }
 
@@ -614,6 +646,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         PanelConfigVisible = !PanelConfigVisible;
         Preferencias.PanelConfiguracionVisible = PanelConfigVisible;
+        _repositorio.Guardar(Preferencias);
+    }
+
+    /// <summary>Alterna entre tema oscuro y claro. Se persiste al instante; el code-behind
+    /// reacciona al cambio de <see cref="TemaOscuro"/> para aplicarlo a Avalonia.</summary>
+    [RelayCommand]
+    private void AlternarTema()
+    {
+        TemaOscuro = !TemaOscuro;
+        Preferencias.TemaOscuro = TemaOscuro;
         _repositorio.Guardar(Preferencias);
     }
 
@@ -648,7 +690,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
         AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
         VolverAComprobarMotorCommand.NotifyCanExecuteChanged();
-        DescargarComprimidosCommand.NotifyCanExecuteChanged();
         ReintentarFallidosCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HayFallidos));
     }

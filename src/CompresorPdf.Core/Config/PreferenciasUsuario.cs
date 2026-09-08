@@ -49,6 +49,9 @@ public sealed class PreferenciasUsuario
     /// entre sesiones para no reabrirlo siempre.</summary>
     public bool PanelConfiguracionVisible { get; set; } = true;
 
+    /// <summary>Si true, la interfaz se muestra en tema oscuro; si false, en claro.</summary>
+    public bool TemaOscuro { get; set; }
+
     public long UmbralBytes => (long)(UmbralMb * 1024 * 1024);
 
     /// <summary>

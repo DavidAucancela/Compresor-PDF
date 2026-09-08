@@ -263,6 +263,54 @@ public class ServicioCompresionLoteTests
     }
 
     [Fact]
+    public async Task CopiarComprimidos_incluye_omitidos_junto_a_los_comprimidos()
+    {
+        using var tmp = new CarpetaTemporal();
+        var destino = tmp.Combinar("salida");
+
+        // grande → Comprimido; pequeno → Omitido (no supera umbral).
+        var rutas = new[]
+        {
+            tmp.CrearPdf("grande.pdf",  bytes: 3 * 1024 * 1024),
+            tmp.CrearPdf("pequeno.pdf", bytes: 1024)
+        };
+
+        var servicio = new ServicioCompresionLote(new CompresorFalso(factorTamano: 0.5));
+        var archivos = servicio.Preparar(rutas);
+        var resultados = await servicio.ProcesarAsync(archivos, Prefs());
+
+        Assert.Contains(resultados, r => r.Estado == EstadoCompresion.Comprimido);
+        Assert.Contains(resultados, r => r.Estado == EstadoCompresion.Omitido);
+
+        var copiados = servicio.CopiarComprimidos(resultados, destino);
+
+        // grande.pdf comprimido + pequeno.pdf original = 2 archivos en destino.
+        Assert.Equal(2, Directory.GetFiles(destino).Length);
+        Assert.Contains(copiados, r => r.Contains("grande",  StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(copiados, r => r.Contains("pequeno", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CopiarComprimidos_incluye_sin_ganancia_junto_a_los_comprimidos()
+    {
+        using var tmp = new CarpetaTemporal();
+        var destino = tmp.Combinar("salida");
+
+        // factor 1.5 → el resultado pesa más → SinGanancia.
+        var servicio = new ServicioCompresionLote(new CompresorFalso(factorTamano: 1.5));
+        var archivos = servicio.Preparar([tmp.CrearPdf("ya-optimo.pdf", bytes: 3 * 1024 * 1024)]);
+        var resultados = await servicio.ProcesarAsync(archivos, Prefs());
+
+        Assert.Contains(resultados, r => r.Estado == EstadoCompresion.SinGanancia);
+
+        var copiados = servicio.CopiarComprimidos(resultados, destino);
+
+        // El original de ya-optimo.pdf se copia como sustituto.
+        Assert.Single(copiados);
+        Assert.Contains(copiados, r => r.Contains("ya-optimo", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task El_resumen_agrega_solo_lo_realmente_comprimido()
     {
         using var tmp = new CarpetaTemporal();
