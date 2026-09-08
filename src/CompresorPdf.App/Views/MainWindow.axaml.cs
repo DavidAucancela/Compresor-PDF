@@ -134,6 +134,25 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(ruta)) Modelo.CarpetaSalida = ruta;
     }
 
+    /// <summary>RF-30: elegir a mano el binario de Ghostscript cuando no está en el PATH.</summary>
+    private async void AlElegirGhostscript(object? origen, RoutedEventArgs e)
+    {
+        if (Modelo is null) return;
+
+        var seleccion = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Selecciona el binario de Ghostscript (gs / gswin64c)",
+            AllowMultiple = false
+        });
+
+        var ruta = seleccion.FirstOrDefault()?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(ruta))
+        {
+            Modelo.RutaGhostscript = ruta;
+            Modelo.VolverAComprobarMotorCommand.Execute(null);
+        }
+    }
+
     /// <summary>
     /// Los IStorageItem pueden venir de orígenes sin ruta local (iCloud, sandbox).
     /// El Core trabaja con rutas, así que descartamos los que no la tengan.

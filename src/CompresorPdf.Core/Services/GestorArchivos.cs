@@ -59,6 +59,32 @@ public sealed class GestorArchivos : IGestorArchivos
         return resultado;
     }
 
+    public IReadOnlyList<string> CopiarA(IEnumerable<string> rutasOrigen, string carpetaDestino)
+    {
+        if (string.IsNullOrWhiteSpace(carpetaDestino))
+            throw new ArgumentException("La carpeta de destino no puede estar vacía.", nameof(carpetaDestino));
+
+        Directory.CreateDirectory(carpetaDestino);
+        var destinoCompleto = Path.GetFullPath(carpetaDestino);
+
+        var copiados = new List<string>();
+        foreach (var origen in rutasOrigen)
+        {
+            if (string.IsNullOrWhiteSpace(origen) || !File.Exists(origen)) continue;
+
+            // Si el archivo ya vive en la carpeta destino no hay nada que copiar.
+            var carpetaOrigen = Path.GetFullPath(Path.GetDirectoryName(origen) ?? ".");
+            if (string.Equals(carpetaOrigen, destinoCompleto, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var destino = RutaLibre(Path.Combine(carpetaDestino, Path.GetFileName(origen)));
+            File.Copy(origen, destino);
+            copiados.Add(destino);
+        }
+
+        return copiados;
+    }
+
     public bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos) =>
         archivos
             .Select(a => Path.GetDirectoryName(a.RutaCompleta))

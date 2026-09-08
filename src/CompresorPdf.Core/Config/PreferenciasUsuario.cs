@@ -16,6 +16,17 @@ public sealed class PreferenciasUsuario
 
     public NivelCompresion Nivel { get; set; } = NivelCompresion.Medio;
 
+    /// <summary>DPI forzado para las imágenes (RF-27). Si es null se usa el que trae cada
+    /// nivel (300 / 150 / 72). El motor lo traduce a los conmutadores de downsampling.</summary>
+    public int? DpiImagenes { get; set; }
+
+    /// <summary>Convierte las imágenes a escala de grises (RF-28). Reduce mucho, elimina el
+    /// color.</summary>
+    public bool EscalaDeGrises { get; set; }
+
+    /// <summary>Nivel de compatibilidad PDF que se le pide a Ghostscript (RF-32).</summary>
+    public string NivelCompatibilidad { get; set; } = "1.7";
+
     /// <summary>Carpeta de salida (RF-05). Si es null se usa <c>&lt;origen&gt;/comprimidos</c>.</summary>
     public string? CarpetaSalida { get; set; }
 
@@ -31,15 +42,27 @@ public sealed class PreferenciasUsuario
     /// <summary>Ruta manual al binario de Ghostscript, si no está en el PATH.</summary>
     public string? RutaGhostscript { get; set; }
 
-    /// <summary>Número máximo de archivos comprimidos en paralelo.</summary>
+    /// <summary>Número máximo de archivos comprimidos en paralelo (RF-31).</summary>
     public int GradoParalelismo { get; set; } = 2;
+
+    /// <summary>Estado del panel de configuración lateral (RF-26 / ADR-008): se recuerda
+    /// entre sesiones para no reabrirlo siempre.</summary>
+    public bool PanelConfiguracionVisible { get; set; } = true;
 
     public long UmbralBytes => (long)(UmbralMb * 1024 * 1024);
 
+    /// <summary>
+    /// Traduce las preferencias al perfil que consume el motor. Propaga TODO lo que el motor
+    /// sabe usar: sin esto, <see cref="DpiImagenes"/>, <see cref="EscalaDeGrises"/> y
+    /// <see cref="NivelCompatibilidad"/> nunca llegarían a Ghostscript (RF-27/28/32).
+    /// </summary>
     public PerfilCompresion APerfil() => new()
     {
         Nombre = "Actual",
-        Nivel = Nivel
+        Nivel = Nivel,
+        DpiImagenes = DpiImagenes,
+        EscalaDeGrises = EscalaDeGrises,
+        NivelCompatibilidad = NivelCompatibilidad
     };
 
     public static PreferenciasUsuario PorDefecto() => new()

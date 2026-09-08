@@ -55,8 +55,14 @@
   <!-- Más: botón "Añadir archivos". -->
   <Geometry x:Key="IconoMas">M12 5 V19 M5 12 H19</Geometry>
 
-  <!-- Filtros/ajustes: ícono de la barra de título que abre el panel colapsable. -->
+  <!-- Filtros/ajustes: ícono de la barra de título que conmuta el panel de configuración. -->
   <Geometry x:Key="IconoAjustes">M4 7 H14 M4 12 H20 M4 17 H10</Geometry>
+
+  <!-- Chevron a la derecha: botón "plegar" del panel de configuración (RF-26). -->
+  <Geometry x:Key="IconoPlegar">M9 5 L16 12 L9 19</Geometry>
+
+  <!-- Chevron a la izquierda: botón del carril que vuelve a mostrar el panel (RF-26). -->
+  <Geometry x:Key="IconoDesplegar">M15 5 L8 12 L15 19</Geometry>
 
   <!-- Ventana: minimizar reutiliza IconoMinus, cerrar reutiliza IconoCancelado. -->
   <Geometry x:Key="IconoMaximizar">M5 5 H19 V19 H5 Z</Geometry>

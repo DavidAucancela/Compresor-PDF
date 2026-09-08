@@ -13,6 +13,7 @@ es el numérico.
 | [06-TRAZABILIDAD.md](06-TRAZABILIDAD.md) | Cada RF/RNF → dónde está implementado y probado | verificas el alcance |
 | [07-PLAN-DISENO.md](07-PLAN-DISENO.md) | Rediseño visual completo (Fase 4): sistema de diseño, componentes, fases | vas a trabajar en la UI |
 | [08-PLAN-LOTES-GRANDES.md](08-PLAN-LOTES-GRANDES.md) | Fase 5: selección, totales agregados y exportación para lotes de ~200 PDFs | vas a trabajar en escala/rendimiento |
+| [09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md](09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md) | Fase 6: configuración en panel lateral visible, opciones de compresión no cableadas, QA previo al despliegue | vas a preparar el primer despliegue |
 
 ## Contexto
 

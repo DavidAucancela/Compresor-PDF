@@ -1,3 +1,4 @@
+using CompresorPdf.Core.Config;
 using CompresorPdf.Core.Models;
 using CompresorPdf.Core.Services;
 using CompresorPdf.Tests.Fixtures;
@@ -48,6 +49,26 @@ public class CompresorGhostscriptTests
         var args = CompresorGhostscript.ConstruirArgumentos("/in.pdf", "/out.pdf", perfil);
 
         Assert.Contains("-sColorConversionStrategy=Gray", args);
+    }
+
+    [Fact]
+    public void Los_ajustes_de_usuario_llegan_al_motor_a_traves_de_APerfil()
+    {
+        // Cadena completa RF-27/28/32: PreferenciasUsuario -> APerfil() -> argumentos de gs.
+        // Antes APerfil() sólo copiaba el nivel y estos conmutadores nunca se generaban.
+        var perfil = new PreferenciasUsuario
+        {
+            DpiImagenes = 110,
+            EscalaDeGrises = true,
+            NivelCompatibilidad = "1.6"
+        }.APerfil();
+
+        var args = CompresorGhostscript.ConstruirArgumentos("/in.pdf", "/out.pdf", perfil);
+
+        Assert.Contains("-dColorImageResolution=110", args);
+        Assert.Contains("-dDownsampleColorImages=true", args);
+        Assert.Contains("-sColorConversionStrategy=Gray", args);
+        Assert.Contains("-dCompatibilityLevel=1.6", args);
     }
 
     [Fact]

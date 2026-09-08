@@ -36,8 +36,10 @@ public sealed class ResultadoCompresion
     public string TamanoFinalLegible =>
         TamanoFinal > 0 ? ArchivoPdf.FormatearTamano(TamanoFinal) : "—";
 
+    /// <summary>Reducción como texto. Por debajo de 0.1 % se considera "sin cambios" para no
+    /// mostrar un chip de "-0 %" en un archivo que a efectos prácticos no encogió.</summary>
     public string ReduccionLegible =>
-        PorcentajeReduccion > 0
+        PorcentajeReduccion >= 0.1
             ? string.Create(CultureInfo.InvariantCulture, $"-{PorcentajeReduccion:0.#} %")
             : "—";
 }

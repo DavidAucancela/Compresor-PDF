@@ -6,7 +6,7 @@
 vive en `CompresorPdf.Core`, un proyecto sin una sola referencia a Avalonia. Esto compra
 tres cosas concretas:
 
-1. Se puede probar el sistema entero sin abrir una ventana (así están escritas las 43 pruebas).
+1. Se puede probar el sistema entero sin abrir una ventana (así están escritas las 57 pruebas).
 2. Añadir una CLI o un servicio de carpeta vigilada (RF-15) no duplica lógica.
 3. Cambiar de framework de UI no toca el motor.
 

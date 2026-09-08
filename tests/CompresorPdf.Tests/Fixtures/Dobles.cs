@@ -45,6 +45,18 @@ public sealed class CompresorQueFalla(string mensaje = "boom") : ICompresorPdf
         Task.FromResult(ResultadoMotor.Fallo(mensaje));
 }
 
+/// <summary>Motor que dice "ok" pero no escribe nada: simula a Ghostscript terminando con
+/// código 0 sin generar el PDF (el caso que dejaba filas "comprimidas a 0 KB").</summary>
+public sealed class CompresorSinSalida : ICompresorPdf
+{
+    public string Nombre => "SinSalida";
+    public bool EstaDisponible => true;
+
+    public Task<ResultadoMotor> ComprimirAsync(
+        string rutaEntrada, string rutaSalida, PerfilCompresion perfil, CancellationToken ct = default) =>
+        Task.FromResult(ResultadoMotor.Ok());
+}
+
 /// <summary>Ejecutor que captura los argumentos en lugar de lanzar un proceso real.</summary>
 public sealed class EjecutorEspia(int codigoSalida = 0, string salidaError = "") : IEjecutorProceso
 {

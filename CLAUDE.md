@@ -7,7 +7,7 @@ sólo cuando superan un umbral configurable. macOS y Windows. 100 % offline.
 
 ```bash
 dotnet run --project src/CompresorPdf.App   # ejecutar
-dotnet test                                 # 43 pruebas
+dotnet test                                 # 57 pruebas
 dotnet build -c Release
 
 ./build/publicar-macos.sh                   # .app + .dmg → artifacts/macos/

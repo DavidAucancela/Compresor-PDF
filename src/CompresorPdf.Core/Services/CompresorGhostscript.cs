@@ -60,8 +60,13 @@ public sealed class CompresorGhostscript : ICompresorPdf
                 return ResultadoMotor.Fallo($"Ghostscript devolvió un error: {detalle}");
             }
 
-            if (!File.Exists(rutaSalida))
+            // Ghostscript puede terminar con código 0 y aun así no escribir nada útil (o dejar
+            // un archivo de 0 bytes si la ruta se había reservado antes). Ambos casos son fallo.
+            if (!File.Exists(rutaSalida) || new FileInfo(rutaSalida).Length == 0L)
+            {
+                LimpiarSalidaParcial(rutaSalida);
                 return ResultadoMotor.Fallo("Ghostscript terminó sin generar el archivo de salida.");
+            }
 
             return ResultadoMotor.Ok();
         }

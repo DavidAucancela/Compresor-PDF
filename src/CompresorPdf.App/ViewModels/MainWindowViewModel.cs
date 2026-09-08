@@ -17,8 +17,13 @@ namespace CompresorPdf.App.ViewModels;
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
-    private readonly ServicioCompresionLote _servicio;
-    private readonly CompresorGhostscript _compresor;
+    /// <summary>Reconstruye motor y orquestador para una ruta de Ghostscript dada (RF-30).
+    /// El orquestador guarda una referencia al compresor en su constructor, así que para que
+    /// "Volver a comprobar" tenga efecto hay que rehacer los dos, no sólo el compresor.</summary>
+    private readonly Func<string?, (ServicioCompresionLote Servicio, CompresorGhostscript Compresor)> _fabricaMotor;
+
+    private ServicioCompresionLote _servicio;
+    private CompresorGhostscript _compresor;
     private readonly IRepositorioPreferencias _repositorio;
     private readonly IRegistro _registro;
 
@@ -28,12 +33,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         ServicioCompresionLote servicio,
         CompresorGhostscript compresor,
+        Func<string?, (ServicioCompresionLote, CompresorGhostscript)> fabricaMotor,
         IRepositorioPreferencias repositorio,
         PreferenciasUsuario preferencias,
         IRegistro registro)
     {
         _servicio = servicio;
         _compresor = compresor;
+        _fabricaMotor = fabricaMotor;
         _repositorio = repositorio;
         _registro = registro;
 
@@ -43,7 +50,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _nivel = preferencias.Nivel;
         _salidaJuntoAlOriginal = preferencias.SalidaJuntoAlOriginal;
         _carpetaSalida = preferencias.CarpetaSalida ?? "";
-        _crearRespaldo = preferencias.CrearRespaldo;
+        _sufijoSalida = preferencias.SufijoSalida;
+        _escalaDeGrises = preferencias.EscalaDeGrises;
+        _gradoParalelismo = preferencias.GradoParalelismo;
+        _rutaGhostscript = preferencias.RutaGhostscript ?? "";
+        _panelConfigVisible = preferencias.PanelConfiguracionVisible;
 
         // RF-22: notificar cuando se añaden/quitan filas
         Filas.CollectionChanged += AlCambiarFilas;
@@ -84,21 +95,61 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty] private bool _salidaJuntoAlOriginal;
     [ObservableProperty] private string _carpetaSalida;
-    [ObservableProperty] private bool _crearRespaldo;
 
-    /// <summary>El número que edita el control numérico, en la unidad elegida. Escribir aquí
-    /// convierte hacia <see cref="UmbralMb"/> (el valor real que usa el Core); cambiar de
-    /// unidad no toca el umbral, sólo cómo se muestra (RF-25).</summary>
-    public double UmbralValor
+    /// <summary>Sufijo que se añade al nombre del archivo de salida (RF-29). El campo ya se
+    /// persistía; hasta la Fase 6 no había forma de editarlo desde la UI.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EjemploNombreSalida))]
+    private string _sufijoSalida;
+
+    [ObservableProperty] private bool _escalaDeGrises;            // RF-28
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ParalelismoValor))]
+    private int _gradoParalelismo;                                // RF-31
+
+    [ObservableProperty] private string _rutaGhostscript;        // RF-30
+
+    /// <summary>RF-26 / ADR-008: el panel lateral de configuración está desplegado o plegado.</summary>
+    [ObservableProperty] private bool _panelConfigVisible;
+
+    /// <summary>Tope del grado de paralelismo: no tiene sentido pasar del número de núcleos,
+    /// que es donde el propio orquestador lo recorta.</summary>
+    public int MaxParalelismo => Environment.ProcessorCount;
+
+    /// <summary>Fachada nullable para el NumericUpDown (su <c>Value</c> es <c>decimal?</c>):
+    /// vaciar el campo manda null y lo tratamos como el mínimo (RF-31).</summary>
+    public decimal? ParalelismoValor
     {
-        get => UnidadUmbral == UnidadTamano.KB ? Math.Round(UmbralMb * 1024, 2) : UmbralMb;
-        set => UmbralMb = Math.Max(0, UnidadUmbral == UnidadTamano.KB ? value / 1024.0 : value);
+        get => GradoParalelismo;
+        set => GradoParalelismo = value is null
+            ? 1
+            : Math.Clamp((int)value.Value, 1, MaxParalelismo);
+    }
+
+    /// <summary>Vista previa del nombre resultante con el sufijo actual (RF-29).</summary>
+    public string EjemploNombreSalida => $"documento{SufijoSalida}.pdf";
+
+    /// <summary>El número que edita el control numérico, en la unidad elegida. Es
+    /// <c>decimal?</c> porque el <c>Value</c> del <c>NumericUpDown</c> lo es: al vaciar el
+    /// campo manda null y convertirlo a un tipo no anulable reventaba con
+    /// <c>InvalidCastException</c>. Escribir aquí convierte hacia <see cref="UmbralMb"/> (el
+    /// valor real que usa el Core); cambiar de unidad no toca el umbral, sólo cómo se
+    /// muestra (RF-25).</summary>
+    public decimal? UmbralValor
+    {
+        get => (decimal)(UnidadUmbral == UnidadTamano.KB ? Math.Round(UmbralMb * 1024, 2) : UmbralMb);
+        set
+        {
+            var v = (double)(value ?? 0m);
+            UmbralMb = Math.Max(0, UnidadUmbral == UnidadTamano.KB ? v / 1024.0 : v);
+        }
     }
 
     /// <summary>500 MB expresado en la unidad activa — el mismo techo, distinta vara.</summary>
-    public double UmbralMaximo => UnidadUmbral == UnidadTamano.KB ? 500 * 1024 : 500;
+    public decimal UmbralMaximo => UnidadUmbral == UnidadTamano.KB ? 512000m : 500m;
 
-    public double UmbralIncremento => UnidadUmbral == UnidadTamano.KB ? 50 : 0.5;
+    public decimal UmbralIncremento => UnidadUmbral == UnidadTamano.KB ? 50m : 0.5m;
 
     public string UmbralFormato => UnidadUmbral == UnidadTamano.KB ? "0" : "0.##";
 
@@ -109,7 +160,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public string ResumenAjustes => string.Create(
         CultureInfo.InvariantCulture,
-        $"{UmbralValor:0.##} {(UnidadUmbral == UnidadTamano.KB ? "KB" : "MB")} · {NombreNivel(Nivel)}");
+        $"{UmbralValor ?? 0m:0.##} {(UnidadUmbral == UnidadTamano.KB ? "KB" : "MB")} · {NombreNivel(Nivel)}");
 
     private static string NombreNivel(NivelCompresion nivel) => nivel switch
     {
@@ -150,6 +201,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _ahorroPorcentaje = "";
     [ObservableProperty] private string _detalleResumen = "";
     [ObservableProperty] private bool _resumenTieneProblemas;
+
+    // ---- Descargar los comprimidos a una carpeta única (RF-33) --------------------
+
+    /// <summary>Resultados del último lote, para poder copiarlos después con "Descargar".</summary>
+    private IReadOnlyList<ResultadoCompresion> _ultimosResultados = [];
+
+    /// <summary>True cuando hay al menos un comprimido que se puede reunir en la carpeta de salida.</summary>
+    [ObservableProperty] private bool _hayDescarga;
+
+    /// <summary>"N comprimido(s) · 45.2 MB → 12.1 MB" — total antes/después de los comprimidos.</summary>
+    [ObservableProperty] private string _resumenDescarga = "";
 
     // ---- Totales en vivo durante la compresión (RF-21) ----------------------------
 
@@ -258,26 +320,51 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(PuedeComprimir))]
-    private async Task ComprimirAsync()
+    private Task ComprimirAsync() => EjecutarLoteAsync([.. Filas], esReintento: false);
+
+    /// <summary>Reintenta sólo las filas que terminaron en <see cref="EstadoCompresion.Error"/>
+    /// (el motor falló, pero el archivo puede estar bien). Fusiona los nuevos resultados con
+    /// los del lote anterior para que el resumen siga reflejando todo.</summary>
+    [RelayCommand(CanExecute = nameof(PuedeReintentar))]
+    private Task ReintentarFallidosAsync() =>
+        EjecutarLoteAsync(
+            [.. Filas.Where(f => f.Estado == EstadoCompresion.Error)], esReintento: true);
+
+    private bool PuedeReintentar() =>
+        HayResumen && !Procesando && !Analizando && GhostscriptDisponible
+        && Filas.Any(f => f.Estado == EstadoCompresion.Error);
+
+    /// <summary>True si el último lote dejó algún archivo en Error (reintentable).</summary>
+    public bool HayFallidos =>
+        HayResumen && Filas.Any(f => f.Estado == EstadoCompresion.Error);
+
+    private async Task EjecutarLoteAsync(IReadOnlyList<FilaResultadoViewModel> filas, bool esReintento)
     {
+        if (filas.Count == 0) return;
+
         GuardarPreferencias();
 
         Procesando = true;
         Progreso = 0;
-        HayResumen = false;
         HayTotalesEnVivo = false;
-        _carpetaResultados = null;
+        if (!esReintento)
+        {
+            HayResumen = false;
+            HayDescarga = false;
+            _ultimosResultados = [];
+            _carpetaResultados = null;
+        }
         _cancelacion = new CancellationTokenSource();
         NotificarComandos();
 
-        foreach (var fila in Filas)
+        foreach (var fila in filas)
         {
             if (fila.Estado is not EstadoCompresion.Corrupto)
                 fila.Estado = EstadoCompresion.Pendiente;
         }
 
-        var archivos = Filas.Select(f => f.Archivo).ToList();
-        var porRuta = Filas.ToDictionary(f => f.Archivo.RutaCompleta, StringComparer.OrdinalIgnoreCase);
+        var archivos = filas.Select(f => f.Archivo).ToList();
+        var porRuta = filas.ToDictionary(f => f.Archivo.RutaCompleta, StringComparer.OrdinalIgnoreCase);
 
         // RF-24b: orígenes mixtos → usar una sola carpeta de destino para todo el lote
         var preferenciasLote = Preferencias;
@@ -295,7 +382,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 CrearRespaldo     = Preferencias.CrearRespaldo,
                 SufijoSalida      = Preferencias.SufijoSalida,
                 RutaGhostscript   = Preferencias.RutaGhostscript,
-                GradoParalelismo  = Preferencias.GradoParalelismo
+                GradoParalelismo  = Preferencias.GradoParalelismo,
+                EscalaDeGrises    = Preferencias.EscalaDeGrises,
+                DpiImagenes       = Preferencias.DpiImagenes,
+                NivelCompatibilidad = Preferencias.NivelCompatibilidad
             };
         }
 
@@ -344,7 +434,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     fila.Aplicar(r);
             }
 
-            MostrarResumen(ResumenLote.De(resultados));
+            // RF-33 / reintento: fusionamos con lo que ya había para no perder el resto del lote.
+            _ultimosResultados = FusionarResultados(_ultimosResultados, resultados);
+            MostrarResumen(ResumenLote.De(_ultimosResultados));
         }
         catch (Exception ex)
         {
@@ -360,6 +452,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Progreso = 100;
             NotificarComandos();
         }
+    }
+
+    /// <summary>Reemplaza en <paramref name="previos"/> las entradas cuyo origen aparece en
+    /// <paramref name="nuevos"/> (un reintento), conservando el orden y el resto.</summary>
+    private static IReadOnlyList<ResultadoCompresion> FusionarResultados(
+        IReadOnlyList<ResultadoCompresion> previos, IReadOnlyList<ResultadoCompresion> nuevos)
+    {
+        if (previos.Count == 0) return nuevos;
+
+        var porRuta = nuevos.ToDictionary(r => r.Origen.RutaCompleta, StringComparer.OrdinalIgnoreCase);
+        return [.. previos.Select(p =>
+            porRuta.TryGetValue(p.Origen.RutaCompleta, out var reintentado) ? reintentado : p)];
     }
 
     private bool PuedeComprimir() => Filas.Count > 0 && !Procesando && !Analizando && GhostscriptDisponible;
@@ -380,6 +484,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Progreso = 0;
         HayResumen = false;
         HayTotalesEnVivo = false;
+        HayDescarga = false;
+        _ultimosResultados = [];
         _carpetaResultados = null;
         MensajeEstado = "Lista vacía. Arrastra PDFs aquí.";
         NotificarComandos();
@@ -416,12 +522,57 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private bool PuedeAbrirCarpeta() => HayResumen && _carpetaResultados != null;
 
+    /// <summary>
+    /// RF-33: copia todos los PDF comprimidos del último lote a la carpeta de salida
+    /// configurada, para reunirlos en un solo sitio (útil cuando se guardaron junto a cada
+    /// original). No mueve nada: el original y el comprimido en su sitio quedan intactos.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(PuedeDescargar))]
+    private void DescargarComprimidos()
+    {
+        var carpeta = CarpetaSalida?.Trim();
+        if (string.IsNullOrWhiteSpace(carpeta)) carpeta = Preferencias.CarpetaSalida;
+        if (string.IsNullOrWhiteSpace(carpeta)) carpeta = RutasApp.CarpetaSalidaPorDefecto;
+
+        try
+        {
+            var copiados = _servicio.CopiarComprimidos(_ultimosResultados, carpeta);
+            _carpetaResultados = carpeta;
+            AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
+
+            MensajeEstado = copiados.Count == 0
+                ? "Los comprimidos ya estaban en la carpeta de salida."
+                : $"{copiados.Count} comprimido(s) descargado(s) en {carpeta}.";
+        }
+        catch (Exception ex)
+        {
+            _registro.Error("Fallo al descargar los comprimidos", ex);
+            MensajeEstado = $"No se pudieron descargar los comprimidos: {ex.Message}";
+        }
+    }
+
+    private bool PuedeDescargar() =>
+        HayResumen && !EstaOcupado &&
+        _ultimosResultados.Any(r => r.Estado == EstadoCompresion.Comprimido);
+
     private void MostrarResumen(ResumenLote resumen)
     {
         MensajeEstado = "Proceso terminado.";
         HayResumen = true;
         ResumenTieneProblemas = resumen.Fallidos > 0;
+        OnPropertyChanged(nameof(HayFallidos));
+        ReintentarFallidosCommand.NotifyCanExecuteChanged();
+
+        // RF-33: total antes/después de los comprimidos + habilitar "Descargar".
+        HayDescarga = resumen.Comprimidos > 0;
+        ResumenDescarga = resumen.Comprimidos > 0
+            ? $"{resumen.Comprimidos} comprimido(s) · " +
+              $"{ArchivoPdf.FormatearTamano(resumen.BytesOriginales)} → " +
+              $"{ArchivoPdf.FormatearTamano(resumen.BytesFinales)}"
+            : "";
+
         AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
+        DescargarComprimidosCommand.NotifyCanExecuteChanged();
 
         if (resumen.Comprimidos == 0)
         {
@@ -446,9 +597,48 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Preferencias.Nivel = Nivel;
         Preferencias.SalidaJuntoAlOriginal = SalidaJuntoAlOriginal;
         Preferencias.CarpetaSalida = string.IsNullOrWhiteSpace(CarpetaSalida) ? null : CarpetaSalida;
-        Preferencias.CrearRespaldo = CrearRespaldo;
+        // La opción "Respaldar el original" se retiró de la UI: se fuerza desactivada.
+        Preferencias.CrearRespaldo = false;
+        Preferencias.SufijoSalida = SufijoSalida?.Trim() ?? "";
+        Preferencias.EscalaDeGrises = EscalaDeGrises;
+        Preferencias.GradoParalelismo = Math.Clamp(GradoParalelismo, 1, MaxParalelismo);
+        Preferencias.RutaGhostscript = string.IsNullOrWhiteSpace(RutaGhostscript) ? null : RutaGhostscript.Trim();
+        Preferencias.PanelConfiguracionVisible = PanelConfigVisible;
         _repositorio.Guardar(Preferencias);
     }
+
+    /// <summary>RF-26 / ADR-008: pliega o despliega el panel lateral. Se persiste al instante
+    /// para que el estado sobreviva aunque la app se cierre sin comprimir nada.</summary>
+    [RelayCommand]
+    private void AlternarPanelConfig()
+    {
+        PanelConfigVisible = !PanelConfigVisible;
+        Preferencias.PanelConfiguracionVisible = PanelConfigVisible;
+        _repositorio.Guardar(Preferencias);
+    }
+
+    /// <summary>
+    /// RF-30: aplica la ruta manual de Ghostscript sin reiniciar. Reconstruye motor y
+    /// orquestador (ver <see cref="_fabricaMotor"/>) y refresca el estado del motor en la UI.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(PuedeVolverAComprobarMotor))]
+    private void VolverAComprobarMotor()
+    {
+        Preferencias.RutaGhostscript = string.IsNullOrWhiteSpace(RutaGhostscript) ? null : RutaGhostscript.Trim();
+        _repositorio.Guardar(Preferencias);
+
+        (_servicio, _compresor) = _fabricaMotor(Preferencias.RutaGhostscript);
+
+        OnPropertyChanged(nameof(GhostscriptDisponible));
+        OnPropertyChanged(nameof(AvisoMotor));
+        NotificarComandos();
+
+        MensajeEstado = GhostscriptDisponible
+            ? $"Ghostscript detectado: {_compresor.RutaBinario}"
+            : "Sigue sin encontrarse Ghostscript. Revisa la ruta indicada.";
+    }
+
+    private bool PuedeVolverAComprobarMotor() => !Procesando && !Analizando;
 
     private void NotificarComandos()
     {
@@ -457,5 +647,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         LimpiarCommand.NotifyCanExecuteChanged();
         QuitarSeleccionadosCommand.NotifyCanExecuteChanged();
         AbrirCarpetaResultadosCommand.NotifyCanExecuteChanged();
+        VolverAComprobarMotorCommand.NotifyCanExecuteChanged();
+        DescargarComprimidosCommand.NotifyCanExecuteChanged();
+        ReintentarFallidosCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HayFallidos));
     }
 }

@@ -214,6 +214,10 @@ Hoy es un `WrapPanel` con etiquetas y controles sueltos sin agrupación. Pasa a:
   la lista; los ajustes se abren en un popover/flyout anclado al ícono, con los valores
   actuales (umbral y nivel) resumidos en una línea pequeña cuando el panel está cerrado,
   para que no queden "escondidos a ciegas".
+  **⚠️ Revertido en la Fase 6 — ver [ADR-008](02-DECISIONES-ADR.md#adr-008) y
+  [09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md](09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md).** El `Flyout` pasa
+  a ser un panel lateral fijo y plegable; el resumen de una línea vive ahora en la cabecera
+  del panel plegado. No lo implementes como popover otra vez.
 
 ### 5.5 Iconografía
 
@@ -343,7 +347,9 @@ Las tres decisiones abiertas de este plan ya están resueltas:
 1. **Base de componentes: Semi.Avalonia.** [ADR-007](02-DECISIONES-ADR.md#adr-007--base-de-componentes-para-el-rediseño-semiavalonia).
 2. **Panel de ajustes: colapsable**, detrás del ícono de ajustes en la barra de título
    (sección 5.1), con un resumen de una línea del umbral y nivel actuales cuando está
-   cerrado.
+   cerrado. **⚠️ Revertido en la Fase 6 por [ADR-008](02-DECISIONES-ADR.md#adr-008):** los
+   ajustes pasan a un panel lateral fijo y plegable, visible sin abrir nada. El resumen de
+   una línea se conserva en la cabecera del panel cuando está plegado.
 3. **Barra de título: personalizada, idéntica en macOS y Windows** — sustituye tanto los
    semáforos de macOS como los botones min/max/cerrar de Windows por controles propios.
 

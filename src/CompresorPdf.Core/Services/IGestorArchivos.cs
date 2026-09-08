@@ -16,4 +16,11 @@ public interface IGestorArchivos
 
     /// <summary>True si los archivos provienen de más de una carpeta padre distinta (RF-24b).</summary>
     bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos);
+
+    /// <summary>
+    /// Copia varios archivos a una única carpeta (RF-33: "descargar todos los comprimidos").
+    /// Omite los que ya están en la carpeta destino y no pisa nombres existentes. Devuelve
+    /// las rutas efectivamente copiadas.
+    /// </summary>
+    IReadOnlyList<string> CopiarA(IEnumerable<string> rutasOrigen, string carpetaDestino);
 }

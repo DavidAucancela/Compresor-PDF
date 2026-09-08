@@ -134,4 +134,51 @@ public class GestorArchivosTests
 
         Assert.False(_gestor.TieneOrigenesMixtos(archivos));
     }
+
+    // RF-33: "Descargar comprimidos" reúne en una sola carpeta los PDF ya comprimidos.
+
+    [Fact]
+    public void CopiarA_reune_los_archivos_en_la_carpeta_destino()
+    {
+        using var tmp = new CarpetaTemporal();
+        var a = tmp.CrearPdf(Path.Combine("uno", "comprimidos", "a.pdf"));
+        var b = tmp.CrearPdf(Path.Combine("dos", "comprimidos", "b.pdf"));
+        var destino = tmp.Combinar("salida");
+
+        var copiados = _gestor.CopiarA([a, b], destino);
+
+        Assert.Equal(2, copiados.Count);
+        Assert.True(File.Exists(tmp.Combinar("salida", "a.pdf")));
+        Assert.True(File.Exists(tmp.Combinar("salida", "b.pdf")));
+        // Los originales no se tocan (no es "mover").
+        Assert.True(File.Exists(a));
+        Assert.True(File.Exists(b));
+    }
+
+    [Fact]
+    public void CopiarA_omite_los_que_ya_estan_en_la_carpeta_destino()
+    {
+        using var tmp = new CarpetaTemporal();
+        var yaEnDestino = tmp.CrearPdf(Path.Combine("salida", "a.pdf"));
+        var fuera = tmp.CrearPdf(Path.Combine("otra", "b.pdf"));
+
+        var copiados = _gestor.CopiarA([yaEnDestino, fuera], tmp.Combinar("salida"));
+
+        Assert.Single(copiados);
+        Assert.EndsWith("b.pdf", copiados[0]);
+    }
+
+    [Fact]
+    public void CopiarA_no_pisa_un_nombre_que_ya_existe_en_el_destino()
+    {
+        using var tmp = new CarpetaTemporal();
+        var origen = tmp.CrearPdf(Path.Combine("origen", "a.pdf"), bytes: 2000);
+        tmp.CrearPdf(Path.Combine("salida", "a.pdf"), bytes: 10);   // ocupa el nombre
+
+        var copiados = _gestor.CopiarA([origen], tmp.Combinar("salida"));
+
+        Assert.Single(copiados);
+        Assert.Contains("(2)", copiados[0]);
+        Assert.Equal(2000, new FileInfo(copiados[0]).Length);
+    }
 }

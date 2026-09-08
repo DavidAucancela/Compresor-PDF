@@ -81,7 +81,10 @@ public sealed partial class FilaResultadoViewModel : ObservableObject
     public void Aplicar(ResultadoCompresion resultado)
     {
         Estado = resultado.Estado;
-        TamanoFinal = resultado.TamanoFinalLegible;
+        // Sólo mostramos un tamaño final si de verdad se entregó un archivo. En "Omitido" /
+        // "Ya optimizado" / "Error" el usuario se queda con el original, y un "→ 149 KB" ahí
+        // confunde (parece que el archivo creció o que hubo un fallo silencioso).
+        TamanoFinal = resultado.RutaSalida is not null ? resultado.TamanoFinalLegible : "—";
         Reduccion = resultado.ReduccionLegible == "—" ? "" : resultado.ReduccionLegible;
         Mensaje = resultado.Mensaje ?? "";
     }

@@ -14,7 +14,7 @@
         Background="{DynamicResource SemiColorBackground0}"
         DragDrop.AllowDrop="True">
 
-  <Grid RowDefinitions="44,*">
+  <Grid RowDefinitions="44,*,Auto">
 
     <!-- ══ Barra de título propia (plan de diseño, sección 5.1) ══
          Idéntica en macOS y Windows: sustituye tanto los semáforos como los botones
@@ -36,79 +36,12 @@
         <TextBlock Grid.Column="2" Text="{Binding ResumenAjustes}" VerticalAlignment="Center"
                    FontSize="12" Opacity="0.55" Margin="0,0,10,0" IsHitTestVisible="False" />
 
-        <!-- Ajustes: panel colapsable en un Flyout (sección 5.4, decisión confirmada). -->
+        <!-- Ajustes: conmuta el panel lateral fijo (RF-26 / ADR-008), ya no abre un Flyout. -->
         <Button Grid.Column="3" Classes="boton-ventana" Margin="0,0,2,0"
-                ToolTip.Tip="Ajustes">
+                Command="{Binding AlternarPanelConfigCommand}" ToolTip.Tip="Mostrar / ocultar configuración">
           <Path Data="{StaticResource IconoAjustes}" Width="16" Height="16" Stretch="Uniform"
                 Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
                 StrokeLineCap="Round" />
-          <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedRight">
-              <Border Padding="18" Width="320">
-                <StackPanel Spacing="16">
-
-                  <StackPanel Spacing="6">
-                    <TextBlock Text="Comprimir si supera" FontSize="12" Opacity="0.65" />
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <NumericUpDown Value="{Binding UmbralValor}" Minimum="0"
-                                     Maximum="{Binding UmbralMaximo}"
-                                     Increment="{Binding UmbralIncremento}"
-                                     FormatString="{Binding UmbralFormato}" Width="130" />
-                      <!-- Unidad del umbral (RF-25): cambiarla no cambia el umbral efectivo,
-                           sólo cómo se edita — ver MainWindowViewModel.UmbralValor. -->
-                      <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="8" Padding="3">
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                          <ToggleButton Classes="segmento" Content="KB" Padding="10,5"
-                                        IsChecked="{Binding UnidadUmbral, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=KB}" />
-                          <ToggleButton Classes="segmento" Content="MB" Padding="10,5"
-                                        IsChecked="{Binding UnidadUmbral, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=MB}" />
-                        </StackPanel>
-                      </Border>
-                    </StackPanel>
-                  </StackPanel>
-
-                  <StackPanel Spacing="6">
-                    <TextBlock Text="Nivel de compresión" FontSize="12" Opacity="0.65" />
-                    <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="8" Padding="3">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <ToggleButton Classes="segmento" Content="Bajo" HorizontalAlignment="Stretch"
-                                      IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Bajo}" />
-                        <ToggleButton Classes="segmento" Content="Medio" HorizontalAlignment="Stretch"
-                                      IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Medio}" />
-                        <ToggleButton Classes="segmento" Content="Alto" HorizontalAlignment="Stretch"
-                                      IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Alto}" />
-                      </StackPanel>
-                    </Border>
-                  </StackPanel>
-
-                  <CheckBox Content="Guardar junto al original (comprimidos/)"
-                            IsChecked="{Binding SalidaJuntoAlOriginal}" />
-
-                  <StackPanel Orientation="Horizontal" Spacing="8"
-                              IsVisible="{Binding !SalidaJuntoAlOriginal}">
-                    <TextBox Text="{Binding CarpetaSalida}" Width="220" Watermark="Carpeta de salida" />
-                    <Button Click="AlElegirCarpeta" ToolTip.Tip="Elegir carpeta">
-                      <Path Data="{StaticResource IconoCarpeta}" Width="15" Height="15" Stretch="Uniform"
-                            Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
-                            StrokeLineCap="Round" StrokeJoin="Round" />
-                    </Button>
-                  </StackPanel>
-
-                  <CheckBox Content="Respaldar el original" IsChecked="{Binding CrearRespaldo}" />
-
-                  <Separator />
-
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Ellipse Width="7" Height="7" VerticalAlignment="Center"
-                             Fill="{Binding GhostscriptDisponible, Converter={x:Static conv:ConvertidorDisponibleAColor.Instancia}}" />
-                    <TextBlock Text="{Binding AvisoMotor}" FontSize="11" Opacity="0.6"
-                               TextWrapping="Wrap" />
-                  </StackPanel>
-
-                </StackPanel>
-              </Border>
-            </Flyout>
-          </Button.Flyout>
         </Button>
 
         <!-- Minimizar / maximizar / cerrar: idénticos en ambos sistemas operativos. -->
@@ -133,8 +66,10 @@
       </Grid>
     </Border>
 
-    <!-- ══ Contenido ══ -->
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="20,16,20,20">
+    <!-- ══ Contenido + panel de configuración lateral (RF-26 / ADR-008) ══ -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*,Auto" Margin="20,16,20,16">
 
       <!-- Aviso del motor: sólo estorba si de verdad falta algo que hacer. -->
       <Border Grid.Row="0" IsVisible="{Binding !GhostscriptDisponible}"
@@ -204,7 +139,12 @@
           </Button>
 
           <!-- RF-22: columna 0 (28 px) = checkbox de selección; columna 1 = ícono de estado;
-               columnas 2-4 = datos del archivo. -->
+               columnas 2-4 = datos del archivo.
+               El ItemsControl no scrollea por sí solo (a diferencia de un ListBox): con lotes
+               de cientos de PDFs hay que envolverlo en un ScrollViewer o las últimas filas
+               quedan fuera de la ventana. -->
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
           <ItemsControl ItemsSource="{Binding Filas}" IsVisible="{Binding Filas.Count}" Padding="6">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -251,6 +191,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          </ScrollViewer>
 
         </Panel>
       </Border>
@@ -300,37 +241,219 @@
         </StackPanel>
       </Border>
 
-      <!-- Acciones -->
-      <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"
-                  Margin="0,16,0,0">
-        <!-- RF-24: abrir en el explorador del SO la carpeta con los comprimidos. -->
-        <Button Command="{Binding AbrirCarpetaResultadosCommand}" IsVisible="{Binding HayResumen}">
-          <StackPanel Orientation="Horizontal" Spacing="7">
-            <Path Data="{StaticResource IconoCarpeta}" Width="13" Height="13" Stretch="Uniform"
-                  Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
-                  StrokeLineCap="Round" StrokeJoin="Round" />
-            <TextBlock Text="Abrir carpeta" VerticalAlignment="Center" />
+    </Grid>
+
+    <!-- ══ Panel de configuración lateral (RF-26 / ADR-008) ══
+         Sustituye al antiguo Flyout: siempre presente, plegable con el botón de engranaje de
+         la barra de título. Su estado (plegado o no) se persiste en PreferenciasUsuario. -->
+    <Border Grid.Column="1" Classes="panel-config" Width="300"
+            IsVisible="{Binding PanelConfigVisible}">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="18" Margin="18">
+
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Configuración" FontSize="14" FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="boton-ventana"
+                    Command="{Binding AlternarPanelConfigCommand}" ToolTip.Tip="Plegar panel">
+              <Path Data="{StaticResource IconoPlegar}" Width="14" Height="14" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                    StrokeLineCap="Round" StrokeJoin="Round" />
+            </Button>
+          </Grid>
+
+          <!-- ─── Compresión ─── -->
+          <StackPanel Spacing="13">
+            <TextBlock Text="COMPRESIÓN" FontSize="10.5" FontWeight="SemiBold" Opacity="0.5" />
+
+            <StackPanel Spacing="6">
+              <TextBlock Text="Comprimir si supera" FontSize="12" Opacity="0.65" />
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <NumericUpDown Value="{Binding UmbralValor}" Minimum="0"
+                               Maximum="{Binding UmbralMaximo}"
+                               Increment="{Binding UmbralIncremento}"
+                               FormatString="{Binding UmbralFormato}" Width="118" />
+                <!-- Unidad del umbral (RF-25): cambiarla no cambia el umbral efectivo,
+                     sólo cómo se edita — ver MainWindowViewModel.UmbralValor. -->
+                <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="8" Padding="3">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <ToggleButton Classes="segmento" Content="KB" Padding="10,5"
+                                  IsChecked="{Binding UnidadUmbral, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=KB}" />
+                    <ToggleButton Classes="segmento" Content="MB" Padding="10,5"
+                                  IsChecked="{Binding UnidadUmbral, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=MB}" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+              <TextBlock Text="Nivel de compresión" FontSize="12" Opacity="0.65" />
+              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="8" Padding="3">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                  <ToggleButton Classes="segmento" Content="Bajo" HorizontalAlignment="Stretch"
+                                IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Bajo}" />
+                  <ToggleButton Classes="segmento" Content="Medio" HorizontalAlignment="Stretch"
+                                IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Medio}" />
+                  <ToggleButton Classes="segmento" Content="Alto" HorizontalAlignment="Stretch"
+                                IsChecked="{Binding Nivel, Converter={x:Static conv:ConvertidorEnumIgual.Instancia}, ConverterParameter=Alto}" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- RF-28 -->
+            <StackPanel Spacing="2">
+              <CheckBox Content="Convertir a escala de grises" IsChecked="{Binding EscalaDeGrises}" />
+              <TextBlock Text="Reduce mucho, elimina el color." FontSize="11" Opacity="0.5"
+                         Margin="24,0,0,0" />
+            </StackPanel>
           </StackPanel>
-        </Button>
-        <Button Click="AlAnadirArchivos" IsEnabled="{Binding PuedeAnadirArchivos}">
-          <StackPanel Orientation="Horizontal" Spacing="7">
-            <Path Data="{StaticResource IconoMas}" Width="13" Height="13" Stretch="Uniform"
-                  Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.8" StrokeLineCap="Round" />
-            <TextBlock Text="Añadir archivos" VerticalAlignment="Center" />
+
+          <Separator />
+
+          <!-- ─── Salida ─── -->
+          <StackPanel Spacing="13">
+            <TextBlock Text="SALIDA" FontSize="10.5" FontWeight="SemiBold" Opacity="0.5" />
+
+            <CheckBox Content="Guardar junto al original (comprimidos/)"
+                      IsChecked="{Binding SalidaJuntoAlOriginal}" />
+
+            <StackPanel Spacing="8" IsVisible="{Binding !SalidaJuntoAlOriginal}">
+              <TextBox Text="{Binding CarpetaSalida}" Watermark="Carpeta de salida" />
+              <Button Click="AlElegirCarpeta" HorizontalAlignment="Left" FontSize="12" Padding="10,4">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Path Data="{StaticResource IconoCarpeta}" Width="13" Height="13" Stretch="Uniform"
+                        Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                        StrokeLineCap="Round" StrokeJoin="Round" />
+                  <TextBlock Text="Elegir carpeta" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <!-- RF-29: el campo ya se persistía; ahora es editable. -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="Sufijo del nombre" FontSize="12" Opacity="0.65" />
+              <TextBox Text="{Binding SufijoSalida}" Watermark="(ninguno)" Width="150"
+                       HorizontalAlignment="Left" />
+              <TextBlock Text="{Binding EjemploNombreSalida}" FontSize="11" Opacity="0.5"
+                         FontFamily="Consolas,Menlo,monospace" />
+            </StackPanel>
           </StackPanel>
-        </Button>
-        <Button Command="{Binding LimpiarCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="7">
-            <Path Data="{StaticResource IconoPapelera}" Width="13" Height="13" Stretch="Uniform"
-                  Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
-                  StrokeLineCap="Round" StrokeJoin="Round" />
-            <TextBlock Text="Limpiar" VerticalAlignment="Center" />
+
+          <Separator />
+
+          <!-- ─── Motor ─── -->
+          <StackPanel Spacing="13">
+            <TextBlock Text="MOTOR" FontSize="10.5" FontWeight="SemiBold" Opacity="0.5" />
+
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Ellipse Width="7" Height="7" VerticalAlignment="Center"
+                       Fill="{Binding GhostscriptDisponible, Converter={x:Static conv:ConvertidorDisponibleAColor.Instancia}}" />
+              <TextBlock Text="{Binding AvisoMotor}" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- RF-30: la ruta manual de Ghostscript y "volver a comprobar" están ocultas por
+                 ahora (el ViewModel y el code-behind conservan la lógica: AlElegirGhostscript,
+                 VolverAComprobarMotorCommand). -->
+
+            <!-- RF-31 -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="Archivos en paralelo" FontSize="12" Opacity="0.65" />
+              <NumericUpDown Value="{Binding ParalelismoValor}" Minimum="1"
+                             Maximum="{Binding MaxParalelismo}" Increment="1" FormatString="0"
+                             Width="104" HorizontalAlignment="Left" />
+              <TextBlock Text="Más a la vez: más rápido, más CPU y memoria." FontSize="11"
+                         Opacity="0.5" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
-        </Button>
-        <Button Command="{Binding CancelarCommand}" Content="Cancelar" />
-        <Button Command="{Binding ComprimirCommand}" Classes="Primary" Content="Comprimir" MinWidth="120" />
-      </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- Carril para volver a mostrar el panel cuando está plegado (RF-26). Ocupa la misma
+         columna Auto que el panel; sólo uno de los dos es visible a la vez. -->
+    <Border Grid.Column="1" Classes="panel-config" Width="40"
+            IsVisible="{Binding !PanelConfigVisible}">
+      <Button Classes="boton-ventana" VerticalAlignment="Top" Margin="0,10,0,0"
+              Command="{Binding AlternarPanelConfigCommand}" ToolTip.Tip="Mostrar configuración">
+        <Path Data="{StaticResource IconoDesplegar}" Width="14" Height="14" Stretch="Uniform"
+              Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+              StrokeLineCap="Round" StrokeJoin="Round" />
+      </Button>
+    </Border>
 
     </Grid>
+
+    <!-- ══ Footer de acciones (ancho completo, bajo el contenido y el panel) ══
+         Antes vivía dentro de la columna del contenido y, con el panel de 300 px abierto,
+         los botones quedaban montados con el panel. Aquí ocupa todo el ancho de la ventana
+         y, si aún no cabe, los botones bajan de línea (WrapPanel) en vez de solaparse. -->
+    <Border Grid.Row="2" Background="{DynamicResource SemiColorBackground1}"
+            BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0"
+            Padding="20,12">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+
+        <!-- RF-33: total antes/después de los comprimidos. -->
+        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.7"
+                   FontFamily="Consolas,Menlo,monospace" TextTrimming="CharacterEllipsis"
+                   IsVisible="{Binding HayDescarga}" Text="{Binding ResumenDescarga}" />
+
+        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
+                   ItemSpacing="10" LineSpacing="8">
+
+          <!-- RF-33: reunir todos los comprimidos en la carpeta de salida configurada. -->
+          <Button Command="{Binding DescargarComprimidosCommand}" IsVisible="{Binding HayDescarga}"
+                  ToolTip.Tip="Copiar todos los comprimidos a la carpeta de salida">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="{StaticResource IconoSubir}" Width="13" Height="13" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                    StrokeLineCap="Round" StrokeJoin="Round" />
+              <TextBlock Text="Descargar" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <!-- RF-24: abrir en el explorador del SO la carpeta con los comprimidos. -->
+          <Button Command="{Binding AbrirCarpetaResultadosCommand}" IsVisible="{Binding HayResumen}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="{StaticResource IconoCarpeta}" Width="13" Height="13" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                    StrokeLineCap="Round" StrokeJoin="Round" />
+              <TextBlock Text="Abrir carpeta" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Click="AlAnadirArchivos" IsEnabled="{Binding PuedeAnadirArchivos}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="{StaticResource IconoMas}" Width="13" Height="13" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.8" StrokeLineCap="Round" />
+              <TextBlock Text="Añadir archivos" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding LimpiarCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="{StaticResource IconoPapelera}" Width="13" Height="13" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                    StrokeLineCap="Round" StrokeJoin="Round" />
+              <TextBlock Text="Limpiar" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <!-- Reintentar sólo los archivos que fallaron por el motor (no corruptos/protegidos). -->
+          <Button Command="{Binding ReintentarFallidosCommand}" IsVisible="{Binding HayFallidos}"
+                  ToolTip.Tip="Volver a intentar sólo los archivos con error">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="{StaticResource IconoEspiral}" Width="13" Height="13" Stretch="Uniform"
+                    Stroke="{DynamicResource SemiColorText1}" StrokeThickness="1.6"
+                    StrokeLineCap="Round" />
+              <TextBlock Text="Reintentar fallidos" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <!-- "Cancelar" sólo tiene sentido durante un proceso en curso. -->
+          <Button Command="{Binding CancelarCommand}" Content="Cancelar"
+                  IsVisible="{Binding Procesando}" />
+          <Button Command="{Binding ComprimirCommand}" Classes="Primary" Content="Comprimir"
+                  MinWidth="120" />
+        </WrapPanel>
+      </Grid>
+    </Border>
+
   </Grid>
 </Window>

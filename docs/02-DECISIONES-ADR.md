@@ -196,3 +196,34 @@ terceros por una diferencia de tono que nadie notaría. El resto del sistema de 
 (éxito/aviso/peligro/neutral) usa igualmente los tokens semánticos ya provistos por Semi
 (`SemiColorSuccess`, `SemiColorWarning`, `SemiColorDanger`, `SemiColorText…`) en vez de una
 paleta propia paralela — menos superficie que mantener, mismo resultado sistemático.
+
+---
+
+## ADR-008 · Configuración en panel lateral visible (revierte el `Flyout` de §5.4)
+
+**Estado:** aceptada · **Contexto:** [09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md](09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md), Parte A
+
+**Decisión:** los ajustes dejan de vivir en un `Flyout` colgado del ícono de engranaje de la
+barra de título y pasan a un **panel lateral fijo, plegable** a la derecha del contenido. El
+botón de engranaje deja de abrir un popover y pasa a plegar/desplegar ese panel. El estado
+(plegado o no) se persiste entre sesiones (RNF-07).
+
+**Qué revierte.** El plan de diseño ([07-PLAN-DISENO.md](07-PLAN-DISENO.md) §5.4 y §8) fijó
+como "decisión confirmada" que el panel completo se colapsara detrás del ícono y se abriera
+como popover/flyout, con sólo un resumen de una línea visible cuando estaba cerrado. Ese
+resumen (`ResumenAjustes`) se conserva, ahora en la cabecera del panel plegado.
+
+**Motivo.** La configuración determina *con qué* se comprime —umbral, nivel, DPI, escala de
+grises, carpeta y sufijo de salida, motor—. Tenerla tras un clic la volvía fácil de ignorar
+y difícil de auditar de un vistazo antes de lanzar un lote. Un panel siempre presente (aunque
+plegable para recuperar espacio) hace que el estado activo sea visible sin interacción. La
+Fase 6 además añade varios ajustes nuevos (RF-27…RF-32) que no cabían cómodos en un popover.
+
+**Coste que aceptamos.** ~300 px de ancho cuando el panel está abierto; en la ventana a su
+`MinWidth` (760) la lista queda en ~416 px, usable pero justa. Si molesta en pruebas
+manuales, el plan B es un umbral de auto-plegado por ancho.
+
+**Cómo se revierte.** El impacto está contenido en `MainWindow.axaml` (estructura de la
+grilla de contenido y el bloque del panel), un puñado de propiedades del `MainWindowViewModel`
+y `PreferenciasUsuario.PanelConfiguracionVisible`. `Core` no se entera. Volver al `Flyout` es
+recolocar ese mismo XAML dentro de un `<Button.Flyout>`.

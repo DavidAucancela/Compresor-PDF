@@ -132,6 +132,15 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <!-- Panel de configuración lateral (RF-26 / ADR-008): superficie fija a la derecha del
+       contenido, con un borde izquierdo que la separa de la lista. Sustituye al Flyout de
+       la Fase 4 (§5.4). -->
+  <Style Selector="Border.panel-config">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+
   <!-- Botones de la barra de título propia (sección 5.1): minimizar / maximizar / cerrar.
        Planos por defecto, fondo sutil al pasar el cursor; el de cerrar se pone rojo, como
        en cualquier chrome de ventana reconocible. -->

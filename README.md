@@ -63,7 +63,7 @@ brew install dotnet ghostscript
 
 ```bash
 dotnet run --project src/CompresorPdf.App   # ejecutar
-dotnet test                                 # 43 pruebas
+dotnet test                                 # 57 pruebas
 dotnet build -c Release
 ```
 
@@ -81,7 +81,7 @@ Detalles, firma y notarización en [`docs/04-SETUP.md`](docs/04-SETUP.md).
 ```
 src/CompresorPdf.Core    Lógica pura, sin UI. Es donde vive todo lo importante.
 src/CompresorPdf.App     Interfaz Avalonia (MVVM).
-tests/CompresorPdf.Tests 43 pruebas, incluidas 3 de integración con Ghostscript real.
+tests/CompresorPdf.Tests 57 pruebas, incluidas 3 de integración con Ghostscript real.
 build/                   Iconos y scripts de empaquetado (.dmg / .msi).
 docs/                    Arquitectura, decisiones, roadmap y guía de desarrollo.
 ```

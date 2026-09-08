@@ -221,6 +221,48 @@ public class ServicioCompresionLoteTests
     }
 
     [Fact]
+    public async Task Dos_pdf_con_el_mismo_nombre_no_se_pisan_al_ir_a_una_carpeta_unica()
+    {
+        // Reproduce el caso de orígenes mixtos: varios PDF con idéntico nombre redirigidos a
+        // una sola carpeta. Antes, con paralelismo, ResolverRutaSalida devolvía la misma ruta
+        // a dos hilos y uno terminaba con "Ghostscript terminó sin generar el archivo".
+        using var tmp = new CarpetaTemporal();
+        var a = tmp.CrearPdf(Path.Combine("uno", "informe.pdf"), bytes: 3 * 1024 * 1024);
+        var b = tmp.CrearPdf(Path.Combine("dos", "informe.pdf"), bytes: 3 * 1024 * 1024);
+        var salida = tmp.Combinar("salida");
+
+        var servicio = new ServicioCompresionLote(new CompresorFalso(factorTamano: 0.25));
+        var prefs = new PreferenciasUsuario
+        {
+            UmbralMb = 2.0,
+            SalidaJuntoAlOriginal = false,
+            CarpetaSalida = salida,
+            GradoParalelismo = 2
+        };
+
+        var resultados = await servicio.ProcesarAsync(servicio.Preparar([a, b]), prefs);
+
+        Assert.All(resultados, r => Assert.Equal(EstadoCompresion.Comprimido, r.Estado));
+        Assert.Equal(2, resultados.Select(r => r.RutaSalida).Distinct().Count());
+        Assert.Equal(2, Directory.EnumerateFiles(salida).Count());
+    }
+
+    [Fact]
+    public async Task Si_el_motor_dice_ok_pero_no_escribe_nada_se_marca_Error()
+    {
+        using var tmp = new CarpetaTemporal();
+        var servicio = new ServicioCompresionLote(new CompresorSinSalida());
+        var archivos = servicio.Preparar([tmp.CrearPdf("a.pdf", bytes: 3 * 1024 * 1024)]);
+
+        var r = (await servicio.ProcesarAsync(archivos, Prefs()))[0];
+
+        Assert.Equal(EstadoCompresion.Error, r.Estado);
+        Assert.Null(r.RutaSalida);
+        Assert.False(Directory.Exists(tmp.Combinar("comprimidos"))
+                     && Directory.EnumerateFiles(tmp.Combinar("comprimidos")).Any());
+    }
+
+    [Fact]
     public async Task El_resumen_agrega_solo_lo_realmente_comprimido()
     {
         using var tmp = new CarpetaTemporal();

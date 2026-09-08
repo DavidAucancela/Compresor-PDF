@@ -33,12 +33,18 @@ public partial class Aplicacion : Application
         var repositorio = new RepositorioPreferenciasJson(registro: registro);
         var preferencias = repositorio.Cargar();
 
-        var compresor = new CompresorGhostscript(
-            new LocalizadorGhostscript(preferencias.RutaGhostscript),
-            registro: registro);
+        // RF-30: el ViewModel puede pedir un motor nuevo cuando el usuario cambia la ruta de
+        // Ghostscript en Ajustes, sin reiniciar la app.
+        (ServicioCompresionLote, CompresorGhostscript) FabricarMotor(string? rutaGhostscript)
+        {
+            var motor = new CompresorGhostscript(
+                new LocalizadorGhostscript(rutaGhostscript), registro: registro);
+            return (new ServicioCompresionLote(motor, registro: registro), motor);
+        }
 
-        var servicio = new ServicioCompresionLote(compresor, registro: registro);
+        var (servicio, compresor) = FabricarMotor(preferencias.RutaGhostscript);
 
-        return new MainWindowViewModel(servicio, compresor, repositorio, preferencias, registro);
+        return new MainWindowViewModel(
+            servicio, compresor, FabricarMotor, repositorio, preferencias, registro);
     }
 }

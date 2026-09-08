@@ -22,6 +22,11 @@ public sealed class ServicioCompresionLote
     private readonly IGestorArchivos _gestor;
     private readonly IRegistro _registro;
 
+    /// <summary>Serializa la resolución de rutas de salida: con orígenes mixtos, varios PDF
+    /// con el mismo nombre se redirigen a una única carpeta y <c>ResolverRutaSalida</c> (que
+    /// sólo mira <c>File.Exists</c>) podría devolver la misma ruta a dos hilos a la vez.</summary>
+    private readonly object _bloqueoRutaSalida = new();
+
     public ServicioCompresionLote(
         ICompresorPdf compresor,
         IAnalizadorPdf? analizador = null,
@@ -37,6 +42,19 @@ public sealed class ServicioCompresionLote
     /// <summary>True si los archivos proceden de más de una carpeta padre (RF-24b).</summary>
     public bool TieneOrigenesMixtos(IReadOnlyList<ArchivoPdf> archivos) =>
         _gestor.TieneOrigenesMixtos(archivos);
+
+    /// <summary>
+    /// RF-33: reúne en una sola carpeta los PDF ya comprimidos del lote ("descargar todos").
+    /// Sólo copia los que terminaron en <see cref="EstadoCompresion.Comprimido"/>; omite los
+    /// que ya estaban en la carpeta destino. Devuelve las rutas efectivamente copiadas.
+    /// </summary>
+    public IReadOnlyList<string> CopiarComprimidos(
+        IEnumerable<ResultadoCompresion> resultados, string carpetaDestino) =>
+        _gestor.CopiarA(
+            resultados
+                .Where(r => r.Estado == EstadoCompresion.Comprimido && r.RutaSalida is not null)
+                .Select(r => r.RutaSalida!),
+            carpetaDestino);
 
     /// <summary>Analiza rutas de entrada y devuelve los archivos listos para encolar.</summary>
     public IReadOnlyList<ArchivoPdf> Preparar(IEnumerable<string> rutas) =>
@@ -155,18 +173,39 @@ public sealed class ServicioCompresionLote
 
             _gestor.CrearRespaldo(archivo, preferencias);
 
-            var rutaSalida = _gestor.ResolverRutaSalida(archivo, preferencias);
+            // Reservamos la ruta de salida bajo cerrojo y creamos el archivo vacío: así el
+            // siguiente hilo que resuelva un nombre igual (orígenes mixtos, mismo nombre de
+            // fichero) lo esquiva en vez de escribir sobre el mismo PDF.
+            string rutaSalida;
+            lock (_bloqueoRutaSalida)
+            {
+                rutaSalida = _gestor.ResolverRutaSalida(archivo, preferencias);
+                File.Create(rutaSalida).Dispose();
+            }
+
             var motor = await _compresor
                 .ComprimirAsync(archivo.RutaCompleta, rutaSalida, preferencias.APerfil(), ct)
                 .ConfigureAwait(false);
 
             if (!motor.Exitoso)
             {
+                BorrarSilenciosamente(rutaSalida);   // quita el placeholder vacío
                 Marcar(resultado, EstadoCompresion.Error, motor.Mensaje ?? "Error del motor.");
                 return;
             }
 
             var tamanoFinal = new FileInfo(rutaSalida).Length;
+
+            // El motor dijo "ok" pero no escribió nada (queda el placeholder de 0 bytes): es
+            // un fallo, no una compresión. Sin esto la fila quedaría como "comprimido a 0 KB".
+            if (tamanoFinal == 0)
+            {
+                BorrarSilenciosamente(rutaSalida);
+                Marcar(resultado, EstadoCompresion.Error,
+                    "El motor terminó sin escribir el PDF de salida.");
+                return;
+            }
+
             resultado.TamanoFinal = tamanoFinal;
             resultado.RutaSalida = rutaSalida;
 
