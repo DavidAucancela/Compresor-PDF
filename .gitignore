@@ -25,3 +25,17 @@ TestResults/
 comprimidos/
 originales/
 *.log
+
+# Instalador WiX (artefacto de build)
+.wix/
+
+# Carpetas de pruebas manuales con PDFs reales
+tests/test*/
+
+# Documentos de entrega y manual de usuario (Word/PDF, fuera del repo)
+docs/10-MANUAL-DE-USUARIO.md
+docs/11-DOCUMENTO-DE-ENTREGA.md
+docs/*.docx
+docs/*.pdf
+docs/~$*
+docs/~WRL*.tmp
