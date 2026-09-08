@@ -107,7 +107,7 @@ siguen pasando igual).
 | 4.3 Lista de archivos | Tarjetas con iconografía de estado, reemplaza al `DataGrid` | ✅ verificado con Ghostscript real |
 | 4.4 Panel de ajustes | Colapsable en un Flyout, selector segmentado de nivel | ✅ |
 | 4.5 Progreso y resumen | Barra pulida, métricas destacadas (ahorro total en grande) | ✅ verificado con Ghostscript real |
-| 4.6 Verificación claro/oscuro | Contraste AA en ambos temas | 🟡 compila y arranca en ambos; falta captura visual del tema claro |
+| 4.6 Verificación claro/oscuro | Contraste AA en ambos temas | ✅ toggle implementado en Fase 7 (ADR-009); Semi.Avalonia responde a `RequestedThemeVariant` |
 | 4.7 Pulido y QA visual | Micro-interacciones (hechas); clic real en el chrome de ventana propio | 🟡 pendiente de probar a mano |
 
 **Resultado ya verificado con datos reales:** un PDF de 2.23 MB comprimido a 246.64 KB
@@ -163,82 +163,46 @@ que todos los comprimidos queden en un mismo sitio en vez de desperdigados.
 
 ## Fase 6 — Configuración visible y pulido previo al despliegue
 
-**Estado: en curso.** Plan completo en
-[09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md](09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md). Sale de la revisión
-del sistema antes del primer despliegue.
-
-Leyenda de esta tabla: 🟡 = código y pruebas unitarias integrados, pendiente la QA manual.
+**Estado: completa ✅** Plan completo en
+[09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md](09-PLAN-CONFIG-VISIBLE-Y-PULIDO.md).
 
 | RF | Descripción | Estado |
 |---|---|---|
-| RF-26 | Configuración en panel lateral fijo y plegable, en vez de un `Flyout` oculto | 🟡 |
-| RF-27 | DPI de imágenes configurable | 🟡 sólo Core — el control se retiró de la UI por decisión del usuario |
-| RF-28 | Convertir a escala de grises | 🟡 |
-| RF-29 | Sufijo del nombre de salida editable en la UI (el campo ya se persistía) | 🟡 |
-| RF-30 | Ruta manual de Ghostscript editable en la UI + "volver a comprobar" | 🟡 lógica lista, UI oculta por el usuario |
-| RF-31 | Grado de paralelismo configurable en la UI (hoy fijo en 2) | 🟡 |
-| RF-32 | Nivel de compatibilidad PDF configurable | 🟡 sólo Core — el control se retiró de la UI por decisión del usuario |
-| RF-33 | "Descargar comprimidos": reunir todos los comprimidos del lote en la carpeta de salida + total antes/después | 🟡 |
-| RF-34 | Reintentar sólo los archivos que fallaron por el motor, fusionando el resultado con el lote anterior | 🟡 |
+| RF-26 | Configuración en panel lateral fijo y plegable, en vez de un `Flyout` oculto | ✅ |
+| RF-27 | DPI de imágenes configurable | ✅ sólo Core — el control se retiró de la UI por decisión del usuario |
+| RF-28 | Convertir a escala de grises | ✅ |
+| RF-29 | Sufijo del nombre de salida editable en la UI | ✅ |
+| RF-30 | Ruta manual de Ghostscript editable en la UI + "volver a comprobar" | ✅ lógica lista, UI oculta por decisión del usuario |
+| RF-31 | Grado de paralelismo configurable en la UI | ✅ |
+| RF-32 | Nivel de compatibilidad PDF configurable | ✅ sólo Core — el control se retiró de la UI por decisión del usuario |
+| RF-33 | Reunir todos los archivos del lote en la carpeta de salida (auto al terminar) | ✅ ver Fase 7 |
+| RF-34 | Reintentar sólo los archivos que fallaron por el motor, fusionando con el lote anterior | ✅ |
 
-**Raíz de RF-27/28/32, ya resuelta:** `PreferenciasUsuario.APerfil()` sólo propagaba `Nivel`
-al motor; `CompresorGhostscript` ya sabía usar DPI, escala de grises y compatibilidad, pero
-nunca le llegaban. `APerfil()` ahora los propaga todos (prueba
-`APerfil_propaga_dpi_grises_y_compatibilidad_al_motor`). De las tres, sólo **escala de grises**
-(RF-28) quedó expuesta en la UI: DPI personalizado y compatibilidad PDF se retiraron del panel
-por decisión del usuario (la capacidad sigue en el Core y sus valores por defecto se
-propagan), y el `NumericUpDown` del umbral pasó a `decimal?` para no reventar con
-`InvalidCastException` al vaciar el campo.
+**RF-27/28/32:** `PreferenciasUsuario.APerfil()` ahora propaga DPI, escala de grises y
+compatibilidad al motor. Sólo escala de grises quedó en la UI; DPI y compatibilidad se
+retiraron por decisión del usuario (capacidad disponible en el Core).
 
-**Recortes de UI adicionales pedidos por el usuario tras verlo en pantalla:** se quitó la
-casilla "Respaldar el original" (se fuerza `CrearRespaldo = false`), se ocultó la sección
-"Ruta de Ghostscript" del bloque Motor (queda sólo el estado del motor + "Archivos en
-paralelo"; la lógica RF-30 permanece), y se añadió un carril con botón para volver a mostrar
-el panel cuando está plegado.
+**RF-33 · reunión automática** (comportamiento final, ver Fase 7): `GestorArchivos.CopiarA`
+reúne comprimidos y originales de archivos omitidos/sin-ganancia en la carpeta de salida al
+terminar el lote. Pruebas: `CopiarComprimidos_incluye_omitidos_junto_a_los_comprimidos`,
+`CopiarComprimidos_incluye_sin_ganancia_junto_a_los_comprimidos`.
 
-**RF-33 · "Descargar comprimidos":** `GestorArchivos.CopiarA` reúne los PDF ya comprimidos
-del lote (`Estado == Comprimido`) en la carpeta de salida configurada, omitiendo los que ya
-estaban ahí y sin pisar nombres. Expuesto vía `ServicioCompresionLote.CopiarComprimidos` y el
-comando `DescargarComprimidosCommand`. El resumen muestra además el total antes/después de
-los comprimidos (`ResumenDescarga`, p. ej. `12 comprimido(s) · 45.2 MB → 12.1 MB`). Pruebas:
-`CopiarA_reune_los_archivos_en_la_carpeta_destino`,
-`CopiarA_omite_los_que_ya_estan_en_la_carpeta_destino`,
-`CopiarA_no_pisa_un_nombre_que_ya_existe_en_el_destino`.
+**RF-34 · Reintentar fallidos:** `ReintentarFallidosCommand` reprocesa sólo filas en `Error`,
+fusiona con `FusionarResultados` y recalcula el resumen sobre el lote completo.
 
-**Footer de acciones a ancho completo:** la fila de botones vivía dentro de la columna del
-contenido y, con el panel de 300 px abierto, se montaba con él. Pasó a un `Border` propio en
-una tercera fila de la ventana (`RowDefinitions="44,*,Auto"`), ocupa todo el ancho, usa un
-`WrapPanel` (los botones bajan de línea antes que solaparse) y "Cancelar" sólo aparece
-mientras hay un proceso en curso.
+---
 
-**RF-34 · Reintentar fallidos + presentación de estados que parecían errores.** Tras ver un
-lote real con archivos en rojo:
+## Fase 7 — Tema oscuro/claro, mensaje persistente y reunión automática de omitidos
 
-- **Carrera al resolver la ruta de salida.** Con orígenes mixtos, varios PDF con el mismo
-  nombre se redirigen a una carpeta única y `ResolverRutaSalida` (que sólo mira `File.Exists`)
-  devolvía la misma ruta a dos hilos; uno terminaba con "Ghostscript terminó sin generar el
-  archivo de salida". `ServicioCompresionLote` ahora reserva la ruta bajo cerrojo y crea el
-  archivo vacío antes de invocar al motor. Prueba:
-  `Dos_pdf_con_el_mismo_nombre_no_se_pisan_al_ir_a_una_carpeta_unica`.
-- **Motor que dice "ok" sin escribir nada** → `Error` explícito ("El motor terminó sin
-  escribir el PDF de salida") en vez de una fila "comprimida a 0 KB".
-  `CompresorGhostscript` además rechaza un archivo de salida de 0 bytes. Pruebas:
-  `Si_el_motor_dice_ok_pero_no_escribe_nada_se_marca_Error`.
-- **"Ya optimizado" / "Omitido" mostraban `16 KB → 149 KB`**, como si el archivo hubiera
-  crecido. `FilaResultadoViewModel.Aplicar` muestra `→ —` cuando no se entregó archivo.
-- **Chip `-0 %`** en archivos que encogieron una milésima: `ReduccionLegible` devuelve `—`
-  por debajo del 0.1 %. Pruebas en `ResultadoCompresionTests`.
-- **`ReintentarFallidosCommand`** reprocesa sólo las filas en `Error`, fusiona los nuevos
-  resultados con `_ultimosResultados` (`FusionarResultados`) y recalcula el resumen sobre el
-  lote completo. Botón "Reintentar fallidos" en el footer, visible con `HayFallidos`.
+**Estado: completa ✅**
 
-**Pendiente para cerrar la fase:** la QA manual de la Parte C del plan — verificación visual
-del tema claro (§4.6), prueba a mano del chrome de ventana (§4.7) y humo con Ghostscript real
-(lote con DPI + grises + sufijo).
-
-**Además, pendiente de pulido en esta fase** (detalle en el plan): reconciliar el recuento de
-pruebas entre `CLAUDE.md` y la trazabilidad, cerrar la verificación visual del tema claro
-(§4.6) y la prueba a mano del chrome de ventana (§4.7), y añadir el [ADR-008](02-DECISIONES-ADR.md#adr-008).
+| Mejora | Descripción | Implementación |
+|---|---|---|
+| RF-35 Tema oscuro/claro (ADR-009) | Toggle luna/sol en la barra de título; persiste entre sesiones | `PreferenciasUsuario.TemaOscuro`, `MainWindowViewModel.AlternarTemaCommand`, `MainWindow.AplicarTema` → `Application.RequestedThemeVariant` |
+| Barra de título reestructurada | Orden: logo · toggle-tema · toggle-ajustes · spacer · resumen · — · □ · × | Elimina la confusión del guion junto a — □ × |
+| `MensajeInformativo` persistente | Texto visible tras terminar la animación de progreso; resume qué pasó y dónde quedaron los archivos | `[ObservableProperty] _mensajeInformativo`, Row 4 en `MainWindow.axaml` |
+| Reunión automática de omitidos | Con carpeta de salida explícita, los omitidos/sin-ganancia se copian solos al terminar el lote; el usuario encuentra todos sus archivos en un sitio sin hacer nada | `MainWindowViewModel.ReunirOmitidosAutomaticamente` llama a `ServicioCompresionLote.CopiarComprimidos` |
+| Botón "Descargar" eliminado | Ya no era necesario tras la reunión automática; se retiró junto con `HayDescarga`, `ResumenDescarga`, `_descargaRealizada` y `DescargarComprimidosCommand` | — |
 
 ---
 

@@ -227,3 +227,36 @@ manuales, el plan B es un umbral de auto-plegado por ancho.
 grilla de contenido y el bloque del panel), un puñado de propiedades del `MainWindowViewModel`
 y `PreferenciasUsuario.PanelConfiguracionVisible`. `Core` no se entera. Volver al `Flyout` es
 recolocar ese mismo XAML dentro de un `<Button.Flyout>`.
+
+---
+
+## ADR-009 · Tema oscuro/claro: `Application.RequestedThemeVariant` + Semi.Avalonia
+
+**Estado:** aceptada · **Contexto:** Fase 7
+
+**Decisión:** el toggle de tema usa `Application.Current!.RequestedThemeVariant` con
+`ThemeVariant.Dark` / `ThemeVariant.Light`. El estado se persiste en
+`PreferenciasUsuario.TemaOscuro` y se aplica al arrancar y al cambiar.
+
+**Motivo.** Avalonia expone `RequestedThemeVariant` como la API oficial para cambiar el
+tema en tiempo de ejecución. Semi.Avalonia usa `ThemeDictionaries` internos (con claves
+`Light` y `Dark`) que reaccionan a esa propiedad automáticamente — no hace falta recargar
+recursos ni reiniciar la app. El resultado es un cambio instantáneo sin parpadeo.
+
+**Dónde vive el código.**
+
+- `PreferenciasUsuario.TemaOscuro` (bool, persiste en JSON).
+- `MainWindowViewModel.AlternarTemaCommand`: invierte `TemaOscuro` y guarda las preferencias.
+- `MainWindow.OnDataContextChanged`: se suscribe a `PropertyChanged` del ViewModel y llama
+  `AplicarTema(bool oscuro)` cada vez que `TemaOscuro` cambia.
+- `MainWindow.AplicarTema`: asigna `Application.Current!.RequestedThemeVariant`.
+- Iconos `IconoSol` e `IconoLuna` en `Styles/Iconos.axaml`; el botón muestra luna en tema
+  claro (para "pasar a oscuro") y sol en tema oscuro (para "pasar a claro").
+
+**Coste que aceptamos.** El código-detrás de la ventana suscribe al `PropertyChanged` del
+ViewModel, lo que implica una referencia directa entre vista y ViewModel (normal en
+Avalonia; el ViewModel sigue sin referencias a Avalonia).
+
+**Cómo se revierte.** Quitar el botón de la barra de título, eliminar `TemaOscuro` de
+`PreferenciasUsuario`, y borrar `OnDataContextChanged` + `AplicarTema` de `MainWindow`.
+Cuatro cambios aislados, ninguno toca `Core`.
