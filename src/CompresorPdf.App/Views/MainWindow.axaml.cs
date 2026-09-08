@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using CompresorPdf.App.ViewModels;
 
 namespace CompresorPdf.App.Views;
@@ -41,6 +42,24 @@ public partial class MainWindow : Window
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
     private MainWindowViewModel? Modelo => DataContext as MainWindowViewModel;
+
+    // ---- Tema claro / oscuro -------------------------------------------------------
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (DataContext is not MainWindowViewModel vm) return;
+        AplicarTema(vm.TemaOscuro);
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.TemaOscuro))
+                AplicarTema(vm.TemaOscuro);
+        };
+    }
+
+    private static void AplicarTema(bool oscuro) =>
+        Application.Current!.RequestedThemeVariant =
+            oscuro ? ThemeVariant.Dark : ThemeVariant.Light;
 
     // ---- Barra de título propia (sección 5.1) --------------------------------------
 

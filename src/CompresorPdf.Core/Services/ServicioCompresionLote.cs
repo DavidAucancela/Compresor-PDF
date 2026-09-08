@@ -44,17 +44,28 @@ public sealed class ServicioCompresionLote
         _gestor.TieneOrigenesMixtos(archivos);
 
     /// <summary>
-    /// RF-33: reúne en una sola carpeta los PDF ya comprimidos del lote ("descargar todos").
-    /// Sólo copia los que terminaron en <see cref="EstadoCompresion.Comprimido"/>; omite los
-    /// que ya estaban en la carpeta destino. Devuelve las rutas efectivamente copiadas.
+    /// RF-33: reúne en una sola carpeta todos los PDF del lote que tienen resultado descargable:
+    /// los <see cref="EstadoCompresion.Comprimido"/> se copian desde su ruta de salida; los
+    /// <see cref="EstadoCompresion.Omitido"/> y <see cref="EstadoCompresion.SinGanancia"/> se
+    /// copian desde el original (no superaron el umbral o ya estaban optimizados, pero el
+    /// usuario los quiere reunidos igualmente). Omite los que ya estaban en la carpeta destino.
+    /// Devuelve las rutas efectivamente copiadas.
     /// </summary>
     public IReadOnlyList<string> CopiarComprimidos(
-        IEnumerable<ResultadoCompresion> resultados, string carpetaDestino) =>
-        _gestor.CopiarA(
-            resultados
-                .Where(r => r.Estado == EstadoCompresion.Comprimido && r.RutaSalida is not null)
-                .Select(r => r.RutaSalida!),
-            carpetaDestino);
+        IEnumerable<ResultadoCompresion> resultados, string carpetaDestino)
+    {
+        var lista = resultados as IList<ResultadoCompresion> ?? [.. resultados];
+
+        var comprimidos = lista
+            .Where(r => r.Estado == EstadoCompresion.Comprimido && r.RutaSalida is not null)
+            .Select(r => r.RutaSalida!);
+
+        var originalesSinCambio = lista
+            .Where(r => r.Estado is EstadoCompresion.Omitido or EstadoCompresion.SinGanancia)
+            .Select(r => r.Origen.RutaCompleta);
+
+        return _gestor.CopiarA(comprimidos.Concat(originalesSinCambio), carpetaDestino);
+    }
 
     /// <summary>Analiza rutas de entrada y devuelve los archivos listos para encolar.</summary>
     public IReadOnlyList<ArchivoPdf> Preparar(IEnumerable<string> rutas) =>
